@@ -19,13 +19,18 @@ from wakeonlan import send_magic_packet             #pra acordar meu pc
 import pyscreenshot as ImageGrab                    #imagegrab pra tirar screenshots
 import logging                                      #meio que inútil
 import pickle                                       #fazer os salvamentos das listas
-import tracemalloc
-tracemalloc.start()
-import traceback
-import asyncio
-import youtube_dl
-#-----------------          
+import tracemalloc                                  #alguns tracebacks não funcionam sem isso
+tracemalloc.start()                                 #^
+import traceback                                    #nem lembro mais
+import asyncio                                      #TimeOutError
+import youtube_dl                                   #player de música
+from nudity import Checker                          #pra fazer checks de nudez nas imagens de pessoas com cargo2pontos
+import multiprocessing
+import quantumrandom                               #real random generator
+#-----------------
 
+
+#logger de eventos do discord.py, é para debugging.
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
@@ -44,16 +49,28 @@ regras = 542690955405426698                         #id do canal de regras
 registro = 675819847128711182                       #id do canal registros
 natasid = 283345376231292929                        #id do meu user para estreitar funções ao meu user. (debbugging)
 willid = 258775759324184586                         #id do will
-bate_papo_mirror = 701184727796940910
+bate_papo_mirror = 701184727796940910               #dentadura
+natasaltid = 536984029564764162                     #id Natas'     
 #-------------- 
 
 #todo list:
 #james gado - done
 #log - done
-#games
-#ativos n precisar de 1 msgs só pra continuar ativos.
-#persistence no cargo de ..
-#não apagar mensagens contento ass que sejam do tenor
+#games -talvez em outra vida
+#ativos n precisar de 1 msgs só pra continuar ativos. -DEPRECATED
+#persistence no cargo de .. - DONE
+#não apagar mensagens contento ass que sejam do tenor - DONE
+#persistence nos mutados - DONE
+#organização dos comandos que estavam dentro do on_message - DONE
+#não precisar pegar variáveis em todo on_message (fazer global) - DONE
+#corrigir o rich presence que estava atualizando errado - DONE
+#atualizar para dev e usar AllowedMentions - DONE
+#pseudo-random menos random para o dice - DONE
+#whitelist para counterar falsos positivos dos links contendo ass e tal 
+#persistence no bom dia
+#um único save para salvar todos os tipos de listas/dicionários
+#USAR COGS
+
 
 
 #iniciando variáveis úteis
@@ -65,6 +82,7 @@ imageextensions = ['.png', '.jpg', '.webp', '.jpeg', '.mp4', '.3gp',
 blacklist = ['pornhub', 'xvideos', 'xxx', 'xnxx', 'xhamster', 'porn',                   #sinalizar como porn
      'boobs', 'ass', 'pussy', 'dick', 'asshole', 'sex', 'discord.gg']
 redirects = ['bit.ly', 'goo.gl', 'adf.ly', 'tinyurl', 'ow.ly']                          #sinalizar redirects
+whitelist = ['tenor.com', '']
 mensagemflood = 300                                                                     #número de caracteres antes de ser considerado mensagem como spam
 membrosativos = []                                                                      #inicia lista de ativos, aqui vão os objetos membros
 membrosativosvalores = []                                                               #inicia a lista onde ficam o nº de mensagens, correspondente ao index do membrosativos
@@ -73,7 +91,7 @@ ativothreshold = 100                                                            
 tempmember = ''                                                                         #inicia a lista para guardar o membro que se faz checagem ao deletar mensagens
 started = datetime.datetime.now()                                                       #pega a hora em que o bot foi iniciado, para cálculo de $uptime depois
 initialtime = round(time.time()/86400, 0)                                               #inicia a variável de checks pra reset da lista membrosativosvalores
-lastplayingchange = datetime.datetime.now()                                             #inica a variável pra
+lastplayingchange = 0                                                                   #inica a variável pra
 spam = 120                                                                              #120 é o número para se checar se em 15 minutos de entrada de servidor forem enviadas 120 mensagens, dar mute.
 bomdiacooldown = {}                                                                     #aqui ficam temporariamente usuários impedidos de receberem a resposta do bot referente ao bom dia
 logging.basicConfig(filename='botlog.log', filemode='w', format='%(levelname)s - %(message)s')
@@ -92,13 +110,14 @@ setorajuda = {                                                                  
     '**$versugestão**':'Usado para ver as sugestões de filme suas ou de outros usuários',
     '**$apagarsugestão**':'Usado para apagar suas sugestões.',
     '**$dice**':'Joga dados.',
-    '**$github**':'Link para o repositório GitHub do bot.'
+    '**$github**':'Link para o repositório GitHub do bot.',
+    '**ping**':'ping.'
     }
-natasmember = ''
+natasmember = ''                                                                        #aqui abaixo iniciam variáveis que são globais. é pra economizar ficar pegando coisas a cada evento.
 lastuserjoin = ''
 lastlastuserjoin = ''
 attachmentsApagados = {}
-discordget = discord.utils.get
+discordget = discord.utils.get                                                          #usar . pra pegar atributos muitas vezes é mais lento.
 roles = ['Centro-Oeste','Sudeste', 'Sul','Nordeste','Norte']
 roles_emoji = ['🌿','🍞','🧉','🌴','🧭']
 voicechannel = ''
@@ -111,10 +130,15 @@ cargo2pontos = ''
 cargocaveira = ''
 reg_tp = ''
 mirrorchannel = ''
+lasttimedonecommand = ''
+limiter1dia = {}
+raidcontrol = False
+mutadosroles = {}
+saudações = {'bom dia': [], 'boa tarde':[], 'boa noite': []}
 #-------------------------
 
 
-class attachment:
+class attachment:                                                                      #útilidade pública
     def __init__(self, time, message_id, channel_name, author, filename, fileformat, nomearquivo):
         self.time = time
         self.message_id = message_id
@@ -124,10 +148,8 @@ class attachment:
         self.fileformat = fileformat
         self.nomearquivo = nomearquivo
 
-
 def gettplove(message):
     return discordget(message.guild.emojis, id=522462442366828574)      #representa o emoji tplove, para mostrar, usa-se str(tplove)
-
 
 def getboasvindasembed(member):
     channel = member.guild.get_channel(regras)
@@ -140,8 +162,7 @@ def getboasvindasembed(member):
 
     return embed
 
-
-def daypass():                          #esta função retorna True na primeira vez executada, e True somente uma vez a cada 24 horas.
+def daypass():                              #esta função retorna True na primeira vez executada, e True somente uma vez a cada 24 horas.
     global initialtime                                                                  #pega a variável que definimos globalmente, pois local não se aplica a eventos (ex. on_message não requer chamar a variável como global, mas def sim)
     if round(time.time()/86400, 0) > initialtime:                                       #pega o tempo atual e compara com o initial time, que é na primeira vez 0, e depois o tempo antes de ser feito qualquer comparação.
         initialtime = round(time.time()/86400, 0)
@@ -150,8 +171,7 @@ def daypass():                          #esta função retorna True na primeira 
         initialtime = round(time.time()/86400, 0)
         return False
     
-
-def log(information):                    #função experimental ainda não implementada
+def log(information):                       #função experimental ainda não implementada
     '''
     with open(str(lista)+'.txt', 'w') as f:                                             #objetivo é ao pressionar combinação de tecla, salvar a lista de ativos para depois ler ao pressionar a mesma ou combinação diferente.
         for item in lista:
@@ -159,16 +179,13 @@ def log(information):                    #função experimental ainda não imple
     '''
     logging.info(information)
 
-
-def aprovarsugestão(member, message):
+def aprovarsugestão(member, message):       #usado por staff para aprovar sugestões (dã)
     channel = discordget(member.guild.channels, name='sugestões-de-filmes')
     return channel.send(content=str(message))
-
 
 def is_troller(m):                      #aqui usamos a variável tempmember para checar nas mensagens que serão apagadas pertecem ao membro desordeiro, retorna True se a mensagem será apagada.
     global tempmember
     return m.author == tempmember
-
 
 
 def savelistasugestãofilme():
@@ -198,7 +215,21 @@ def savedirectmessages():
     with open('directmessages.txt', 'wb') as f:
         pickle.dump(directmessages, f)
 
+def savemutadosroles():
+    global mutadosroles
+    with open('mutadosroles.txt', 'wb') as f:
+        pickle.dump(mutadosroles, f)
 
+
+
+def loadmutadosroles():
+    global mutadosroles
+    try:
+        with open('mutadosroles.txt', 'rb') as f:
+            mutadosroles = pickle.load(f)
+    except:
+        with open('mutadosroles.txt', 'wb') as f:
+            pickle.dump(mutadosroles, f)
 
 def loadlistasugestãofilme():
     global listasugestãofilme
@@ -254,10 +285,10 @@ def loadeventofilmelista():
             pickle.dump(eventofilmelista, f)
 
 def resetativo():                       #resetativo é o primeiro reset inicial que damos, é onde as listas são definidas com seus "placeholders"
-    n=1000
+    """n=1000
     for i in membrosativosvalores:
         if i !=0:
-            n -= 1
+            n -= 1"""
         
     
     '''
@@ -280,19 +311,21 @@ def resetativo():                       #resetativo é o primeiro reset inicial 
     savetimes()
     savevalores()
     '''
-    loadativos()
-    loadtimes()
-    loadvalores()
+    #loadativos()
+    #loadtimes()
+    #loadvalores()
+    loadmutadosroles()
     if eventofilme:
         loadeventofilmelista()
         loadlistasugestãofilme()
 
-    n=1000
+    """
+        n=1000
     for i in membrosativosvalores:
         if i !=0:
-            n -= 1
+            n -= 1"""
 
-    print('Listas iniciadas\nslots restantes:', n)#, membrosativos, membrosativostimes, membrosativosvalores)
+    #print('Listas iniciadas\nslots restantes:')#, membrosativos, membrosativostimes, membrosativosvalores)
     
 def resetlista():                       #aqui resetamos a lista, a lista na qual pertence os valores, já que não é necessário reiniciar tudo.
     global membrosativosvalores
@@ -304,7 +337,7 @@ def resetlista():                       #aqui resetamos a lista, a lista na qual
     print('Lista de ativos valores foi RESET!')
 
 
-#resetativo()                            #inicia as listas, desligado pois as listas de ativos foram desabilitadas
+resetativo()                            #inicia as listas, desligado pois as listas de ativos foram desabilitadas, religado pois tem mais coisa do que lista de ativos dentro da func
 
 
 def getadmincargos(member):
@@ -327,7 +360,7 @@ def spammerdebomdialimiter(member):
     global bomdiacooldown
     try:
         bomdiacooldown[member]
-        if datetime.datetime.now() - bomdiacooldown[member] >= datetime.timedelta(seconds=30):
+        if datetime.datetime.now() - bomdiacooldown[member] >= datetime.timedelta(seconds=50):
             del bomdiacooldown[member]
             return True
         else:
@@ -351,8 +384,9 @@ def coolactivity():                     #randomicamente escolhe dentro dessa lis
         'nada, to estudando.',
         'James gado',
         'The Project',
+        'ECDSA',
         'The Project',
-        'throwing money to hoes',
+        'money to hoes',
         'NATAS LINDOOOOOO',
         'The Project',
         'The Project',
@@ -361,7 +395,12 @@ def coolactivity():                     #randomicamente escolhe dentro dessa lis
         'The Project',
         'Python',
         'The Project',
+        'Sou Open-Source! Digite o comando $github.',
         'The Project',
+        '$help',
+        '$help',
+        '$help',
+        '$help',
         'nada, to estudando.',
         'Prefixo: $',
         'The Project',
@@ -372,32 +411,48 @@ def coolactivity():                     #randomicamente escolhe dentro dessa lis
         '𝕓𝕦𝕘𝕤 𝕡𝕣𝕠 𝕒𝕝𝕥𝕠',
         '[̲̅b][̲̅u][̲̅g][̲̅s] [̲̅p][̲̅r][̲̅o] [̲̅a][̲̅l][̲̅t][̲̅o]',
         'b̸͇͕͕̱̜͔̓͐͜u̴̦͇͂͐͋̓̽͌̅͑̕g̴̠̾̽̆͑s̶̘͎͙͍͒̉̀̐͘ͅ ̷̘̘̦͛͛̍̄̀̇̆͋͠ṗ̵̖̗̎͐͝ṟ̶̼̳͚̬̣͉̓̒̀̈́̑̑̓͑̽ơ̵̢̻͍̤͎͎̾͆͊̉̔̔̀̈́ ̶̨͇̲̜͉̼͌̏́͊͛a̵̤̹̪̿̆̔l̸̡̧͓̜͚͓̖̣̆̽̄͋̐̿̌t̶̪͓̣̬̟̹̹̺͓͖͊̏͋̈́̾̂̕͠o̴͖̗̝̞̣̩͖̣͛͛͊͗',
-        'b͓̽u͓̽g͓̽s͓̽ ͓̽p͓̽r͓̽o͓̽ ͓̽a͓̽l͓̽t͓̽o͓̽'
+        'b͓̽u͓̽g͓̽s͓̽ ͓̽p͓̽r͓̽o͓̽ ͓̽a͓̽l͓̽t͓̽o͓̽',
+        'pra esquecer a morena 😔'
         ]
     
-    a = ''.join(random.sample(string.digits, 1))
+    a = random.randint(0, 9)
     global lastplayingchange
-    if int(a) > 4:
-        if datetime.datetime.now() - lastplayingchange > datetime.timedelta(minutes=1):
-            lastplayingchange = datetime.datetime.now()
-            return random.choice(lista)
-        else:
-            return 'The Project'
+    if a > 4:
+        try:
+            if datetime.datetime.now() - lastplayingchange[0] > datetime.timedelta(minutes=2):
+                lastplayingchange = [datetime.datetime.now(), random.choice(lista)]
+                return lastplayingchange[1]
+            else:
+                return lastplayingchange[1]
+        except:
+            lastplayingchange = [datetime.datetime.now(), 'The Project']
     else:
-        return 'The Project'
+        try:
+            return lastplayingchange[1]
+        except:
+            return 'The Project'
+
+
+async def waiting(seconds, ctx, text):
+    await asyncio.sleep(seconds)
+    await ctx.channel.send(text)
 
 
 
 
 
-#client = discord.Client()                                  #nem sei pq isso existe
+#client = discord.Client()                                  #nem sei pq isso existe, HOJE EU SEI
 #client.allowed_mentions(everyone = False)
-client = commands.Bot(command_prefix = '$', help_command=None)                 #isso eu sei         
+client = commands.Bot(command_prefix = '$', help_command=None, allowed_mentions=discord.AllowedMentions(everyone=False))                 #isso eu sei         
+
+
+
+
 
 @client.event
 async def on_ready():
     print(f'[{currenttime()}]Logged on as {client.user}!')
-    #raw pq se não for raw, ele não escuta os reacts em mensagens que foram enviadas antes de iniciar o bot
+
 
 
 
@@ -405,10 +460,10 @@ async def on_ready():
 
 @client.event
 async def on_raw_reaction_remove(event):
-
+    #raw pq se não for raw, ele não escuta os reacts em mensagens que foram enviadas antes de iniciar o bot
     userid = event.user_id                                  #pega o id de quem reagiu
     guild = client.get_guild(id=event.guild_id)             #pega a guild
-    member = guild.get_member(userid)                       #procura o objeto membro correspondente ao id dentro da guild
+    member = guild.get_member(userid)                           #procura o objeto membro correspondente ao id dentro da guild
     memberroles = member.roles
     guildroles = member.guild.roles
     reg_tp = guild.get_channel(registro)
@@ -419,34 +474,25 @@ async def on_raw_reaction_remove(event):
         if id == clube_id:
             if str(event.emoji) == '\U0001F4DA':
                 await discord.Member.remove_roles(member, livro)#tira a role
-                await reg_tp.send(content='[{}] Removido de {.mention} Grupo de Estudos'.format(currenttime(), member)) #escreve no log
+                await reg_tp.send(content='❌ [{}] Removido de {.mention} Grupo de Estudos'.format(currenttime(), member)) #escreve no log
         
         if id == grupo_id:
             if str(event.emoji) == '\U0001F4DA':
                 await discord.Member.remove_roles(member, estudos)
-                await reg_tp.send(content='[{}] Removido de {.mention} Grupo de Estudos'.format(currenttime(), member))
+                await reg_tp.send(content='❌ [{}] Removido de {.mention} Grupo de Estudos'.format(currenttime(), member))
     
 
     #referente à tag região
     global roles
     global roles_emoji
 
-    if event.channel_id == 697863869707845682:
-        for item in roles:
-            if hash(event.emoji.name) == hash(roles_emoji[roles.index(item)]) and item in str(memberroles):
-                await member.remove_roles(discordget(guildroles, name=item))
-                reg = await client.fetch_channel(registro)
+    if event.channel_id == 697863869707845682:                  #se o canal é o certo
+        for item in roles:                                      #itera sobre todas as roles
+            if hash(event.emoji.name) == hash(roles_emoji[roles.index(item)]) and item in str(memberroles): #verifica se o emoji removido está dentro da lista
+                await member.remove_roles(discordget(guildroles, name=item)) #se sim, ele retira a role
+                reg = await client.fetch_channel(registro)      #e envia no reg_tp as infos
                 await reg.send(f'Removido role \"{item}\" ao usuário {member.mention}')
                 return
-
-
-
-
-
-@client.command()
-async def ping(ctx):
-    print('yeah command entered')
-    await ctx.send('pinto')
 
 
 
@@ -455,15 +501,13 @@ async def ping(ctx):
 
 @client.event
 async def on_message(message):                          #aqui ficam todos os comandos relacionados a mensagens enviadas
-    global cargospegos
-    global guild
-    global member
-    global ademir
-    global mutedrole
-    global cargo2pontos
-    global cargocaveira
-    global reg_tp
-    global mirrorchannel
+
+
+    if message.author.bot:                              #não escutar mensagens de bot. é um boolean.
+        return
+
+
+    global cargospegos, guild, member, ademir, mutedrole, cargo2pontos, cargocaveira, reg_tp, mirrorchannel, saudações
     if message.guild != None and cargospegos == False:
 
         guild = message.guild                           #pega a guild
@@ -481,24 +525,28 @@ async def on_message(message):                          #aqui ficam todos os com
         #--- cargos pegos
     
     
-    messagecontentlower = message.content.lower()
+    messagecontentlower = message.content.lower()       #performance reasons
+
+    global limiter1dia
+
+    if daypass():
+        limiter1dia.clear()
+        saudações = {'bom dia': [], 'boa tarde':[], 'boa noite': []}
 
 
-    if message.author.bot:                              #não escutar mensagens de bot. é um boolean.
-        return
 
 
-    if message.author.id == natasid and str(message.channel) == 'Direct Message with Natas#9686':                        #verifica se quem manda mensagem sou eu
+    if message.author.id == natasid:                    #verifica se quem manda mensagem sou eu
         if 'acordar' in message.content:
-            send_magic_packet(secret.mac)      #envia o magic packet para o compiuter
+            send_magic_packet(secret.mac)               #envia o magic packet para o compiuter
             await message.channel.send('Magic packet enviado.')
-            return                                      #retorna pra não enviar o negócio
+            return                                      #retorna
 
-        if 'status' in message.content and not 'command' in message.content:
+        if messagecontentlower.startswith('status'):
             await message.author.send('**Server Status:**\n\n'+str(getsysinfo()))
             i=0
             await message.author.send('\n\n**Listas:**\n\n**Ativos:**\n')
-            while i<=len(membrosativos)/2000:
+            while i<=len(membrosativos)/2000:           #usamos o while aqui pra enviar mensagens maiores do que 2000 caracteres de maneira segmentada
                 await message.author.send(f'`{str(membrosativos)[(2000*i):1950+(2000*i)]}`')
                 i+=1
             i=0
@@ -516,7 +564,7 @@ async def on_message(message):                          #aqui ficam todos os com
             await message.author.send(f'\n**entradasmembros:**\n`{entradasmembros}`')
             return
 
-        if 'command' in message.content:
+        if messagecontentlower.startswith('command'):
             output = os.popen(message.content[message.content.find('command')+8:]).read()
             if not output:
                 output = 'Done.'
@@ -532,8 +580,8 @@ async def on_message(message):                          #aqui ficam todos os com
             return
         '''
 
-    if 'Direct Message with' in str(message.channel) and 'Natas' not in str(message.channel):
-        print('Received DM with {} message=\'{}\''.format(message.author, message.content))
+    if 'Direct Message' in str(message.channel):
+        print(f'Received DM with {message.author} message=\'{message.content}\'')
         directmessages.update({
             message.author.id:f'[{currenttime()}], \"{message.content}\"'
         })
@@ -543,109 +591,31 @@ async def on_message(message):                          #aqui ficam todos os com
 
 
     if 'obrigado' in messagecontentlower and client.user.mentioned_in(message=message): #se agradecer o bot, responder com uma mensagem legal
-        await message.channel.send('Disponha, {.mention} {}'.format(message.author, str(gettplove(message))))
+        await message.channel.send(f'Disponha, {message.author.mention} {str(gettplove(message))}')
 
-
-    await client.change_presence(status=discord.Status.idle, activity=discord.Game(coolactivity())) #seta o 'jogando'
-
+    if random.choice([0,1,2]) == 0:
+        await client.change_presence(status=discord.Status.idle, activity=discord.Game(coolactivity())) #seta o 'jogando'
+    
+    
 
     if str(message.channel) == 'apresentações-introdução':  #mensagens aqui serão reagidas com like
         await message.add_reaction(emoji); await message.add_reaction(gettplove(message))               #emoji personalido :like:
-        await reg_tp.send(content='[{}] Nova apresentação de {.mention}'.format(currenttime(), message.author))
+        await reg_tp.send(content='✅ [{}] Nova apresentação de {.mention}'.format(currenttime(), message.author))
         await message.author.add_roles(discordget(message.guild.roles, name='Apresentado'))
         return
 
 
 
-    if message.content.startswith('$sugerirfilme') and 200 > len(message.content) > 13 and message.channel.name in ['bots']: #comando $sugerirfilme é ativo quando eventofilme for True
-        global eventofilmelista
-        global listasugestãofilme
-        if eventofilme:                                     #se o evento de filme esstiver ativo
-            if eventofilmelista.get(message.author.id) is None or len(eventofilmelista.get(message.author.id)) <= 2:
-                if not extractor.has_urls(message.content): #se conter links ele não vai escutar
-                    if message.author.id in eventofilmelista.keys():#verifica se o cara já fez alguma sugestão
-                        eventofilmelista.get(message.author.id).append(message.content[14:])
-                    else:
-                        eventofilmelista.update({
-                            message.author.id:[message.content[14:]]
-                        })
-                    
-
-                    staff = discordget(message.guild.channels, name='staff')#pega o canal para envio da solicitação de aprovação
-                    
-                    msg = await staff.send(content=f'Nova sugestão de filme de {message.author.mention}: \n\"{message.content[14:]}\"\nDeseja aprovar essa sugestão?')
-                    await msg.add_reaction(':like:547068425067954196')
-                    await msg.add_reaction('\U0001F44E')    #envia a solicitação junto das reações para aprovação ou n
-                    listasugestãofilme.update({             #atualiza a lista com id da mensagem de solicitação e o filme escolhido
-                        msg.id:[message.content[14:],message.author.id]
-                    })
-                    savelistasugestãofilme()                #salva a lista no txt
-                    await message.channel.send(f'{message.author.mention}, sua sugestão foi enviada, muito obrigado! {str(gettplove(message))}')
-                    await message.channel.send(f'Você tem mais {3-len(eventofilmelista[message.author.id])} sugestões de filme')
-                    saveeventofilmelista()                  #mostra quantas sugestões de filme ainda podem ser feitas
-                    return                                  #sempre bom ter
-                else:
-                    await message.channel.send(f'{message.author.mention}, ops! aconteceu um erro.')
-                    return
-            else:
-                await message.channel.send(content=f'{message.author.mention}, você não pode fazer mais que 3 sugestões!')
-        else:
-            await message.channel.send(f'{message.author.mention}, o evento de filme não está ativo no momento ou você já fez uma sugestão.')
-            return
-
-    if '$versugestão' in message.content[0:13] and message.channel.name in ['bots'] or '$versugestões' in message.content[0:14] and message.channel.name in ['bots']:
-        if not message.mentions:                            #se o user não mencionou ninguém, mostrar as sugestões dele
-            if message.author.id in eventofilmelista:       #verifica se ele já fez sugestão
-                try:                                        #aqui abaixo envia as sugestões referente ao user que pede
-                    await message.channel.send(content=f'{message.author.mention}, segue sua(s) sugestão(ões) de filme(s):\n{eventofilmelista[message.author.id][0]}')
-                    await message.channel.send(content=f'{eventofilmelista[message.author.id][1]}')
-                    await message.channel.send(content=f'{eventofilmelista[message.author.id][2]}')
-                except:
-                    await message.channel.send(f'Você ainda pode fazer mais {3-len(eventofilmelista[message.author.id])} sugestão(ões).')
-            if message.author.id not in eventofilmelista:
-                await message.channel.send(f'Você não fez uma sugestão ainda {message.author.mention}, faça uma usando o comando $sugerirfilme')
-                return
-        
-        if message.mentions:                                #se ele mencionou alguém, mostrar sugestões de quem foi mencionado
-            try:
-                if message.mentions[0].id in eventofilmelista:
-                    try:                                    #aqui abaixo envia as sugestões
-                        await message.channel.send(content=f'{message.author.mention}, essas são as sugestões do {message.mentions[0].mention}:')
-                        await message.channel.send(content=f'{eventofilmelista[message.mentions[0].id][0]}')
-                        await message.channel.send(content=f'{eventofilmelista[message.mentions[0].id][1]}')
-                        await message.channel.send(content=f'{eventofilmelista[message.mentions[0].id][2]}')
-                    except:
-                        pass
-                else:
-                    await message.channel.send(f'{message.author.mention}, usuário {message.metions[0].mention} não sugeriu filme.')
-
-            except:
-                return
-
-    if '$apagarsugestão' in message.content[0:16] and message.channel.name in ['bots'] or '$apagarsugestões' in message.content[0:17] and message.channel.name in ['bots']:#comando para apagar as sugestões previamente feitas para realizar novas.
-        msg = await message.channel.send(f'{message.author.mention}, você deseja apagar suas sugestões de filme?')
-        await msg.add_reaction('\U0001F44D')
-        await msg.add_reaction('\U0001F44E')
-        
-        channel = message.channel
-        def check(reaction, user):
-            if str(reaction.emoji) != '👍':
-                return
-            return user == message.author and str(reaction.emoji) == '👍'
-
-        try:
-            reaction, user = await client.wait_for('reaction_add', timeout=60.0, check=check)
-        except asyncio.TimeoutError:
-            pass#await channel.send('Você demorou muito para responder, operação cancelada!', delete_after=5)
-        else:
-            del eventofilmelista[message.author.id]
-            await channel.send('Sugestões de filmes apagados com sucesso!')
-
-    if 'dias sem bater uma' in messagecontentlower or 'não bati uma faz' in messagecontentlower or 'sem bater uma por' in messagecontentlower:
+    if 'dias sem bater uma' in messagecontentlower or 'não bati uma faz' in messagecontentlower or 'sem bater uma por' in messagecontentlower:  #ideia do james, blz?
         number = ''
-        for x in messagecontentlower.replace(messagecontentlower[messagecontentlower.index("<"):messagecontentlower.index(">")+1], ''):
-            if x.isdigit() and 'dias' in messagecontentlower[message.content.find(x):]:
-                number = number+str(x)
+        if message.mentions:
+            for x in messagecontentlower.replace(messagecontentlower[messagecontentlower.index("<"):messagecontentlower.index(">")+1], ''):
+                if x.isdigit() and 'dias' in messagecontentlower[message.content.find(x):]:
+                    number = number+str(x)
+        else:
+            for x in messagecontentlower:
+                if x.isdigit() and 'dias' in messagecontentlower[message.content.find(x):]:
+                    number = number+str(x)
         try:
             if len(number) > 10:
                 await message.channel.send(content='vou pegar esse monte de dígito ({} aliás) que vc escreveu e enfiar no seu cu seu fdp {}'.format(len(number), message.author.mention))
@@ -673,15 +643,18 @@ async def on_message(message):                          #aqui ficam todos os com
     if 'não estudei hoje' in messagecontentlower:
         await message.channel.send(content=f'{message.author.mention}, VOCÊ NÃO ESTUDOU HOJE?????????!!!!!11 \n||eu estarei te observando enquanto procrastina||')
         return
+    
     global natasmember
     if not natasmember and not 'direct' in message.channel.name.lower():
         natasmember = discordget(message.guild.members, id=natasid)
 
+
+
     #JULGAMENTO
     member = message.author
-    if str(member.roles).find('..') != -1:                  #detecta se o user tem o cargo ..
-        if message.channel.name != 'apresentações-introdução':#pra não escutar introduções
-            if len(message.content) > mensagemflood:        #se a mensagem é spam, contendo mais de 300 caracteres
+    if str(member.roles).find('..') != -1:                      #detecta se o user tem o cargo ..
+        if message.channel.name != 'apresentações-introdução':  #pra não escutar introduções
+            if len(message.content) > mensagemflood:            #se a mensagem é spam, contendo mais de 300 caracteres
                 if member.top_role == cargocaveira:
                 #mute nele, e embaixo faz um log no registro
                     global tempmember
@@ -691,17 +664,27 @@ async def on_message(message):                          #aqui ficam todos os com
                     except:
                         print('Foi tentado enviar uma mensagem de aviso mute para {message.author.name} porém ele desabilitou tal opção.')
                     await member.add_roles(mutedrole)
-                    log(f'Usuário {tempmember} foi mutado por flood.')
+                    lista = []
+                    for role in member.roles:
+                        lista.append(role.name)
+                    mutadosroles.update({member.id: lista})
+                    savemutadosroles()
                     await message.channel.purge(limit=15, check=is_troller)
-                    await reg_tp.send(content='[{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(mensagem grande)_ no canal {.mention}\n\nMensagem enviada: {} \n\ntamanho: {}\\{} \n\n '.format(currenttime(), ademir, message.author, message.channel, message.content[:1750], len(message.content), mensagemflood))
+                    await reg_tp.send(content='❌ [{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(mensagem grande)_ no canal {.mention}\n\nMensagem enviada: {} \n\ntamanho: {}\\{} \n\n '.format(currenttime(), ademir, message.author, message.channel, message.content[:1750], len(message.content), mensagemflood))
                     await message.channel.send(f'https://tenor.com/zH0p.gif', delete_after=60)
+
                     
                 
                 if member.top_role != cargocaveira:
-                    await reg_tp.send(content='[{}] \n\nusuário {.mention} cometeu infração _mensagem longa_ no canal {.mention}.\nconteúdo:{}'.format(currenttime(), member, message.channel, message.content[0:1850]))
+                    await reg_tp.send(content='❌ [{}] \n\nusuário {.mention} cometeu infração _mensagem longa_ no canal {.mention}.\nconteúdo:{}'.format(currenttime(), member, message.channel, message.content[0:1850]))
                     await message.delete()
                     await message.channel.send(f'{message.author.mention}, não envie mensagens grandes!', delete_after=15)
                     await member.add_roles(cargocaveira)
+                    lista = []
+                    for role in message.author.roles:
+                        lista.append(role.name)
+                    mutadosroles.update({message.author.id: lista})
+                    savemutadosroles()
 
 
             for i in imageextensions:                       #apaga mensagens contendo imagens como attachments
@@ -713,74 +696,122 @@ async def on_message(message):                          #aqui ficam todos os com
                         filename = message.attachments[0].filename #define o nome de arquivo
                         os.system('wget –-quiet {} -O {}'.format(message.attachments[0].url, filename)) #baixa a imagem, precisa ter o wget dentro do path sistema
                         await member.add_roles(mutedrole)       #dá mute, e salva no registro
-                        log(f'Usuário {tempmember} foi mutado por envio de imagem.')
+                        lista = []
+                        for role in message.author.roles:
+                            lista.append(role.name)
+                        mutadosroles.update({message.author.id: lista})
+                        savemutadosroles()
+
                         try:
                             await avisomuteDM(message)
                         except:
                             print('Foi tentado enviar uma mensagem de aviso mute para {message.author.name} porém ele desabilitou tal opção.')
                         files = discord.File("{}".format(filename), filename="/home/natas/bot/{}".format(filename))
-                        await reg_tp.send(file=files, content='[{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(envio de imagem)_ no canal {.mention} \n\ntrigger: {} \n\nMensagem enviada:\n\n'.format(currenttime(), ademir, message.author, message.channel, i))
+                        await reg_tp.send(file=files, content='❌ [{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(envio de imagem)_ no canal {.mention} \n\ntrigger: {} \n\nMensagem enviada:\n\n'.format(currenttime(), ademir, message.author, message.channel, i))
                         tempmember = message.author
                         await message.channel.purge(limit=15, check=is_troller)
                         await message.channel.send(f'https://tenor.com/zH0p.gif', delete_after=60)
 
                     if member.top_role != cargocaveira:
-                        await reg_tp.send(content='[{}] \n\nusuário {.mention} cometeu infração _envio de imagem não verificada_ no canal {.mention}.'.format(currenttime(), member, message.channel))
+                        await reg_tp.send(content='❌ [{}] \n\nusuário {.mention} cometeu infração _envio de imagem não verificada_ no canal {.mention}.'.format(currenttime(), member, message.channel))
                         await message.channel.send(f'{message.author.mention}, não envie imagens!', delete_after=15)
                         await member.add_roles(cargocaveira)
+                        lista = []
+                        for role in message.author.roles:
+                            lista.append(role.name)
+                        mutadosroles.update({message.author.id: lista})
+                        savemutadosroles()
 
             for i in imageextensions:                       #apaga mensagens contendo link de imagens
                 if messagecontentlower.find(i) != -1:
                     if member.top_role == cargocaveira:
                         await member.add_roles(mutedrole)
+                        lista = []
+                        for role in message.author.roles:
+                            lista.append(role.name)
+                        mutadosroles.update({message.author.id: lista})
+                        savemutadosroles()
                         try:
                             await avisomuteDM(message)
                         except:
                             print('Foi tentado enviar uma mensagem de aviso mute para {message.author.name} porém ele desabilitou tal opção.')
                         log(f'Usuário {tempmember} foi mutado por envio de imagem. (link)')
-                        await reg_tp.send(content='[{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(envio de link de imagem)_ no canal {.channel} \n\ntrigger: {} \n\nMensagem enviada:\n\n{}'.format(currenttime(), ademir, message.author, message.channel, i, message.content))
+                        await reg_tp.send(content='❌ [{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(envio de link de imagem)_ no canal {.channel} \n\ntrigger: {} \n\nMensagem enviada:\n\n{}'.format(currenttime(), ademir, message.author, message.channel, i, message.content))
                         #global tempmember
                         tempmember = message.author
                         await message.channel.purge(limit=15, check=is_troller)
 
                     if member.top_role != cargocaveira:
-                        await reg_tp.send(content='[{}] \n\nusuário {.mention} cometeu infração _mensagem longa_ no canal {.mention}.'.format(currenttime(), member, message.channel))
+                        await reg_tp.send(content='❌ [{}] \n\nusuário {.mention} cometeu infração _mensagem longa_ no canal {.mention}.'.format(currenttime(), member, message.channel))
                     await member.add_roles(cargocaveira)
+                    lista = []
+                    for role in message.author.roles:
+                        lista.append(role.name)
+                    mutadosroles.update({message.author.id: lista})
+                    savemutadosroles()
                     await message.channel.send(f'https://tenor.com/zH0p.gif', delete_after=30)
 
         #remover cargo 2 pontos se o usuário tiver dentro do server por mais de 24h
         if (datetime.datetime.now() - member.joined_at) > datetime.timedelta(hours=24):
             if member.top_role == cargo2pontos:
                 await member.remove_roles(cargo2pontos)
-                await reg_tp.send(content='[{}] Usuário {.mention} removido do watchdog por tempo de servidor > 24h'.format(currenttime(), message.author))
+                await reg_tp.send(content='❌ [{}] Usuário {.mention} removido do watchdog por tempo de servidor > 24h'.format(currenttime(), message.author))
     
     for i in redirects:                             #apaga mensagens contendo redirecionadores
         if messagecontentlower.find(i) != -1:
             if extractor.has_urls(message.content):
                 await member.add_roles(mutedrole)
+                lista = []
+                for role in message.author.roles:
+                    lista.append(role.name)
+                mutadosroles.update({message.author.id: lista})
+                savemutadosroles()
                 log(f'Usuário {tempmember} foi mutado por envio link de redirecionador ({i}), \"{message.content}\"')
                 try:
                     await avisomuteDM(message)
                 except:
                     print('Foi tentado enviar uma mensagem de aviso mute para {message.author.name} porém ele desabilitou tal opção.')
-                await reg_tp.send(content='[{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(link com redirect)_ no canal {.mention}\n\ntrigger: {} \n\nMensagem enviada:\n\n{}'.format(currenttime(), ademir, message.author, message.channel, i, message.content))
+                await reg_tp.send(content='❌ [{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(link com redirect)_ no canal {.mention}\n\ntrigger: {} \n\nMensagem enviada:\n\n{}'.format(currenttime(), ademir, message.author, message.channel, i, message.content))
                 tempmember = message.author
                 await message.delete()
                 await message.channel.send(f'https://tenor.com/zH0p.gif', delete_after=30)
     if extractor.has_urls(message.content):
-        for i in blacklist:                             #apaga mensagens contendo links apra sites pornográficos
-            if str(extractor.find_urls(message.content)).lower().find(i) != -1:
-                if message.content.startswith('https://tenor.com'): return
-                await member.add_roles(mutedrole)
-                log(f'Usuário {tempmember} foi mutado por envio de site pornográfico.')
-                await reg_tp.send(content='[{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(link de site dentro do blacklist)_ no canal {.mention}\n\ntrigger: {} \n\nMensagem enviada:\n\n{}'.format(currenttime(), ademir, message.author, message.channel, i, message.content))
-                try:
-                    await avisomuteDM(message)
-                except:
-                    print('Foi tentado enviar uma mensagem de aviso mute para {message.author.name} porém ele desabilitou tal opção.')
-                await message.delete()
-                await message.channel.send(f'https://tenor.com/zH0p.gif', delete_after=30)
+        for link in extractor.find_urls(message.content):
+            if 'http://' not in link and 'https://' not in link:
+                link = 'http://'+link
+            site = requests.get(link)
+            if site.text.lower().find('block this site') != -1 or 'http://www.rtalabel.org/index.php?content=parents' in site.text:
+                    await member.add_roles(mutedrole)
+                    lista = []
+                    for role in message.author.roles:
+                        lista.append(role.name)
+                    mutadosroles.update({message.author.id: lista})
+                    savemutadosroles()
+                    await reg_tp.send(content='❌ [{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(link de site contendo string adulta)_ no canal {.mention}\n\nMensagem enviada:\n\n{}'.format(currenttime(), ademir, message.author, message.channel, message.content))
+                    try:
+                        await avisomuteDM(message)
+                    except:
+                        print('Foi tentado enviar uma mensagem de aviso mute para {message.author.name} porém ele desabilitou tal opção.')
+                    await message.delete(); await message.channel.send(f'https://tenor.com/zH0p.gif', delete_after=30)
 
+            for i in blacklist:                             #apaga mensagens contendo links apra sites pornográficos
+                if link.lower().find(i) != -1:
+                    for i in whitelist:
+                        if i in link: return
+                    await member.add_roles(mutedrole)
+                    lista = []
+                    for role in message.author.roles:
+                        lista.append(role.name)
+                    mutadosroles.update({message.author.id: lista})
+                    savemutadosroles()
+                    await reg_tp.send(content='❌ [{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(link de site dentro do blacklist)_ no canal {.mention}\n\ntrigger: {} \n\nMensagem enviada:\n\n{}'.format(currenttime(), ademir, message.author, message.channel, i, message.content))
+                    try:
+                        await avisomuteDM(message)
+                    except:
+                        print('Foi tentado enviar uma mensagem de aviso mute para {message.author.name} porém ele desabilitou tal opção.')
+                    await message.delete(); await message.channel.send(f'https://tenor.com/zH0p.gif', delete_after=30)
+
+                   
     #----fim seção mutar/avisar/registrar
     if extractor.has_urls(str(message.attachments)):
         for x in imageextensions:
@@ -790,32 +821,34 @@ async def on_message(message):                          #aqui ficam todos os com
                     os.system('wget -q {} -O \"/home/natas/bot/attachments/{}\"'.format(i.url, f'{time} {message.author.id} {message.channel.name} {message.author.name} filename:{i.filename}{x}')) #baixa a imagem, precisa ter o wget dentro do path sistema
                     print(f'file {i.filename} from {message.author.name} sent on {message.channel.name} downloaded.')
                     attachmentsApagados.update({message.id:attachment(time, message.author.id, message.channel.name, message.author.name, i.filename, x, f'{time} {message.author.id} {message.channel.name} {message.author.name} filename:{i.filename}{x}')})
-            
+
+
+        """
+        q = multiprocessing.Queue()
+        p = multiprocessing.Process(target=Checker, args=(f"/home/natas/bot/attachments/{attachmentsApagados[message.id].nomearquivo}",))
+        
+        p.start()
+        print(f'get aqui: \n ------------{q.get()}')
+        if q.get():
+            await message.channel.send(f'{message.author.mention}, não envie pornografia!', delete_after=60)
+            await message.delete()"""
+                
+
+
+                        
 
 
 
     if str(message.channel) == 'sugestões':                 #verifica se essa msg foi enviada no sugestões, etc
         await message.add_reaction('\U0001F44D')        #thumbsup
         await message.add_reaction('\U0001F44E')        #thumbsdown
-        await reg_tp.send(content='[{}] Nova sugestão de {.mention}'.format(currenttime(), message.author))
+        await reg_tp.send(content='<:like:547068425067954196> [{}] Nova sugestão de {.mention}'.format(currenttime(), message.author))
 
-    if message.content.startswith('$help') or message.content.startswith('$ajuda'):             #comando de ajuda #procura o canal com id regras, pra mencionar nas DM's depois
-
-        embed = discord.Embed( #aqui a gente escreve o embed (texto com formatação top q vai ser enviada nas DM's de quem entra)
-            title = '⇝ **Ajuda: The Project!** ⇜',
-            colour = discord.Color.blue()
-        )
-
-        for x in setorajuda:
-            embed.add_field(name='**'+x+'**', value=setorajuda[x], inline=False)
-        embed.set_footer(text='Criado por Natas#9686 e Will#1687')
-        await message.channel.send(embed=embed)
 
     if message.content.startswith('$meutico'):          #sei la fds
-        await message.channel.send('**grande**')
+        pass#await message.channel.send('**grande**')
+        
 
-    if message.content.startswith('$uptime'):
-        await message.channel.send('`Bot uptime is {}`'.format(datetime.datetime.now() - started))
 
     if message.channel == 'clube-do-livro' or message.channel == 'grupo-de-estudos':
         await message.add_reaction('\U0001F4DA')#books  #mensagens aqui serão reagidas com livros
@@ -832,6 +865,7 @@ async def on_message(message):                          #aqui ficam todos os com
         #await message.add_reaction('\U0001F3C6')       #troféu
 
     if client.user.mentioned_in(message=message) and message.mention_everyone is False:
+        if not spammerdebomdialimiter(message.author): return
         if 'ajuda' in message.content or 'help' in message.content or message.content == '<@!668640272573399041>':
             await message.channel.send(content=f'Precisa de ajuda {message.author.mention}?\nAqui estão meus comandos!\n\n')
             embed = discord.Embed( #aqui a gente escreve o embed (texto com formatação top q vai ser enviada nas DM's de quem entra)
@@ -846,11 +880,13 @@ async def on_message(message):                          #aqui ficam todos os com
             await message.add_reaction('\U0001F440')
 
     if ' bot ' in message.content or ' bot,' in message.content or 'bot ' in message.content or 'bot' in message.content[-3:]:
+        if not spammerdebomdialimiter(message.author): return
         await message.add_reaction('\U0001F440')
 
-    if spammerdebomdia and message.channel.name in ['bate-papo', 'shitpost']:
-        if 'bomdia' in messagecontentlower.replace(' ', '') and spammerdebomdialimiter(message.author):
-            if message.mentions and client.user not in message.mentions: return
+    if spammerdebomdia and message.channel.name == 'bate-papo':
+        if messagecontentlower.startswith('bom dia') and message.author.id not in saudações['bom dia']:#bomdia' in messagecontentlower.replace(' ', '') and spammerdebomdialimiter(message.author):
+            saudações['bom dia'].append(message.author.id)
+            if message.mentions and client.user not in message.mentions or not spammerdebomdialimiter(message.author): return
             if 18 >= datetime.datetime.now().hour >= 12:
                 await message.channel.send(content='Não sei você mas aqui já é boa tarde {.mention}.'.format(message.author))
                 return
@@ -861,10 +897,11 @@ async def on_message(message):                          #aqui ficam todos os com
                 else:                
                     await message.channel.send(content='Acordou agora bela adormecida? Já é de noite {.mention}.'.format(message.author))
                     return
-
-        if 'boatarde' in messagecontentlower.replace(' ', '') and spammerdebomdialimiter(message.author):
             
-            if message.mentions and client.user not in message.mentions: return
+
+        if messagecontentlower.startswith('boa tarde') and message.author.id not in saudações['boa tarde']:#'boatarde' in messagecontentlower.replace(' ', '') and spammerdebomdialimiter(message.author):
+            saudações['boa tarde'].append(message.author.id)
+            if message.mentions and client.user not in message.mentions or not spammerdebomdialimiter(message.author): return
             if datetime.datetime.now().hour > 18:
                 await message.channel.send(content='Não sei você mas aqui já é boa noite {.mention}.'.format(message.author))
                 return
@@ -875,11 +912,13 @@ async def on_message(message):                          #aqui ficam todos os com
                 if datetime.datetime.now().hour < 12:
                     await message.channel.send(content='Boa tarde? Cê tá maluco meu, é de manhã ainda {.mention}'.format(message.author))
                     return
-                
-        if 'boanoite' in messagecontentlower.replace(' ', '') and spammerdebomdialimiter(message.author):
-            if message.mentions and client.user not in message.mentions: return
+            
 
-            if 18 <= datetime.datetime.now().hour <= 23 or 0 <= datetime.datetime.now().hour <= 6:
+        if messagecontentlower.startswith('boa noite') and message.author.id not in saudações['boa noite']:#'boanoite' in messagecontentlower.replace(' ', '') and spammerdebomdialimiter(message.author):
+            saudações['boa noite'].append(message.author.id)
+            if message.mentions and client.user not in message.mentions or not spammerdebomdialimiter(message.author): return
+
+            if 17 <= datetime.datetime.now().hour <= 23 or 0 <= datetime.datetime.now().hour <= 6:
                 await message.channel.send(content='Boa noite, {}.'.format(message.author.name[0].upper()+message.author.name[1:]))
                 return
             else:
@@ -887,20 +926,10 @@ async def on_message(message):                          #aqui ficam todos os com
                 await message.channel.send(content='Tu tá fora né? O cara manda um boa noite essas horas {}'.format(str(kekw)))
                 return
 
-    if messagecontentlower.startswith('ola bot') or messagecontentlower.startswith('olá bot') or messagecontentlower.startswith('oi bot'):
+
+    if messagecontentlower.startswith('ola bot') or messagecontentlower.startswith('olá bot') or messagecontentlower.startswith('oi bot') or messagecontentlower.startswith('oi <') and message.mentions[0] == message.guild.me:
         if message.channel.name != 'bate-papo' or not spammerdebomdialimiter(message.author): return
         await message.channel.send(content=f'Olá, {message.author.mention}.')
-
-    if messagecontentlower.startswith('$mostrarboasvindas'):
-        embed = getboasvindasembed(message.author)
-        await message.channel.send(embed=embed)
-    
-    if message.content.startswith('$mensagemDM') and message.mentions[0]:
-        if 'Administrador' not in str(message.author.roles): await message.channel.send(f'{message.author.mention}, este comando só pode ser usado por administradores!'); return
-        await message.mentions[0].send(message.content[len('<@258775759324184586>')+len('$mensagemDM')+2:])
-
-    if messagecontentlower.startswith('$github') and spammerdebomdialimiter(message.author):
-        await message.channel.send(f"{message.author.mention}, aqui está o repositório:\n https://github.com/NatasFX/TheProjectBot ")
 
     if messagecontentlower.startswith('alguém sabe ') or messagecontentlower.startswith('alguém conhece ') or messagecontentlower.startswith('alguém já viu ') or messagecontentlower.startswith('alguém já ') or messagecontentlower.startswith('alguém tentou '):
         if not '?' in message.content or message.channel.name != 'bate-papo': return
@@ -950,7 +979,7 @@ async def on_message(message):                          #aqui ficam todos os com
                 tempmember = member
                 await message.channel.purge(limit=500, check=is_troller)
                 await member.add_roles(mutedrole)
-                await reg_tp.send(content='[{}] Usuário {.mention} mutado por passar de 500 mensagens em 15 minutos dentro do servidor.'.format(currenttime(), member1))
+                await reg_tp.send(content='❌ [{}] Usuário {.mention} mutado por passar de 500 mensagens em 15 minutos dentro do servidor.'.format(currenttime(), member))
 
 
         
@@ -990,28 +1019,7 @@ async def on_message(message):                          #aqui ficam todos os com
                         membrosativostimes.pop(membrosativostimes.index(i))
                         
 
-    #RPG stuff
-    if message.content.startswith('$dice '): # and message.author == jamesid:
-        with message.channel.typing():
-            if not 'd' in message.content[6:]: await message.channel.send(f'{message.author.mention}, por favor use no formato **X**d**Y**, onde X é o número de dados, e Y é o número de lados dos x dados.'); return
-            if message.content[6:].count('d') > 1: await message.channel.send(f'{message.author.mention}, por favor use meu comando corretamente.'); return
-            numeroDeDados, lados = message.content[6:].split('d')
-            #if any(i in invalidCharacters for i in numeroDeDados.lower()) or any(i in invalidCharacters for i in lados.lower()): await message.channel.send(f'{message.author.mention}, use números por favor.'); return
-            try:
-                if int(numeroDeDados) < 1 or int(lados) < 1: await message.channel.send(f'{message.author.mention}, use números válidos por favor.'); return
-            except:
-                await message.channel.send(f'{message.author.mention}, use números por favor.'); return
-            if len(numeroDeDados) > 3 or len(lados) > 3: await message.channel.send(f'{message.author.mention}, tu tá maluco? Oxe eu não vou calcular tanta coisa assim não'); return
-            await message.channel.send(f"Jogando **{numeroDeDados}** dados de **{lados}** lados {message.author.mention}!")
-            i=1;ladosList = []
-            while i <= int(lados):
-                ladosList.append(i)
-                i+=1
-            sum = 0;i=0
-            while i < int(numeroDeDados):
-                sum += random.choice(ladosList)
-                i+=1
-            await message.channel.send(f"Dados jogados! Soma dos dados jogados é **{sum}**!")
+
 
     if message.content.startswith('$resetlista') and message.author.id == natasid and False is True:
         resetlista()
@@ -1059,7 +1067,8 @@ async def on_message(message):                          #aqui ficam todos os com
         if message.attachments:
             files = discord.File(f"/home/natas/bot/attachments/{attachmentsApagados[message.id].nomearquivo}")
             await mirrorchannel.send(file=files)
-            
+
+
 
 
 
@@ -1075,20 +1084,31 @@ async def on_message(message):                          #aqui ficam todos os com
 
 @client.event                                           #quando o user entra, mostrar uma mensagem de boas vindas.
 async def on_member_join(member):
-    log(f'membro {member} entrou no servidor.')
+    global reg_tp, mutadosroles
+
+    if member.id in mutadosroles:
+        print(f'mutadosroles: {mutadosroles}')
+            #for roles in mutadosroles[member.id]:
+        i=1
+        while i < len(mutadosroles[member.id]):
+            print(f'trying to add {str(mutadosroles[member.id][i])}')
+            await member.add_roles(discordget(member.guild.roles, name=mutadosroles[member.id][i]))
+            i+=1
+        await reg_tp.send(f'\n<:tpthink:522461647588294679> [{currenttime()}] usuário {member.mention} tinha {i-1} roles anteriores ao sair do servidor. Adicionadas de volta.\n\x0b')
+
     if member.bot: return
-    if member.name == 'Natas\'': await member.add_roles(discordget(member.guild.roles, name='Bumper')) #pra facilitar minha vida
+    if member.id == natasaltid: await member.add_roles(discordget(member.guild.roles, name='Bumper')) #pra facilitar minha vida
     global newmembernumber
     newmembernumber += 1
     #BOAS VINDAS
     channel = member.guild.get_channel(regras)          #procura o canal com id regras, pra mencionar nas DM's depois
     embed = getboasvindasembed(member)
-    reg_tp = member.guild.get_channel(registro)
+    #reg_tp = member.guild.get_channel(registro)
     try:
         await member.send(embed=embed)                      #envia o embed
-        await reg_tp.send(content='[{}] Dado boas-vindas ao {.mention}'.format(currenttime(), member))
+        await reg_tp.send(content='☺️ [{}] Dado boas-vindas ao {.mention}'.format(currenttime(), member))
     except:
-        await reg_tp.send(content='[{}] Não foi possível dar boas-vindas ao {.mention}.'.format(currenttime(), member))
+        await reg_tp.send(content='😦 [{}] Não foi possível dar boas-vindas ao {.mention}.'.format(currenttime(), member))
     #--------fim boas vindas
 
 
@@ -1098,11 +1118,14 @@ async def on_member_join(member):
     #print(datetime.timedelta.total_seconds(tempodeexistencia)/86400)
 
     if tempodeexistencia < 1:
-        channel = member.reg_tp
-        cargo2pontos = discordget(member.guild.roles, name="..")
+        global cargo2pontos
         await member.add_roles(cargo2pontos)
-        await channel.send('[{}] Usuário {.mention} com menos de 1 dia de conta no Discord entrou no servidor. watchdog adicionado.'.format(currenttime(), member))
-        #print('Novo usuário conta nova.')
+        lista = []
+        for role in member.roles:
+            lista.append(role.name)
+        mutadosroles.update({member.id: lista})
+        savemutadosroles()
+        await reg_tp.send('❗ [{}] Usuário {.mention} com menos de 1 dia de conta no Discord entrou no servidor. watchdog adicionado.'.format(currenttime(), member))
 
 
     #entradasdeuserstempo.update( {str(member): member.joined_at} )
@@ -1120,7 +1143,7 @@ async def on_member_join(member):
             #print('entradasdeuserstempo is true')
             global lastuserjoin
             global lastlastuserjoin
-            print('NMN:', newmembernumber, 'User:', member)
+            print('NMN:', newmembernumber+1, 'User:', member)
 
             lastuserjoin = entradasdeuserstempo[1]
             lastlastuserjoin = entradasdeuserstempo[0]
@@ -1131,11 +1154,59 @@ async def on_member_join(member):
                 cargo2pontos = discordget(member.guild.roles, name="..")
                 await member.add_roles(cargo2pontos)
                 try:
+                    for role in member.roles:
+                        mutadosroles.update({member.id, []})
+                        mutadosroles[member.id].append(role.name)
+                    savemutadosroles()
+                except:
+                    pass
+                try:
                     oldmember = entradasmembros[0]
                     await oldmember.add_roles(cargo2pontos)
-                    await reg_tp.send(content='[{}] Cargo watchdog adicionado ao {.mention} e {.mention}, entraram em menos de {} minutos'.format(currenttime(), member, oldmember, round(datetime.timedelta.total_seconds(lastuserjoin - lastlastuserjoin)/60, 2)))
-                except:
-                    print("Tem algo de errado na atribuição de cargo ao oldmember")
+                    
+
+                    
+                    lista = []
+                    for role in oldmember.roles:
+                        lista.append(role.name)
+                    print(lista)
+                    mutadosroles.update({oldmember.id: lista})
+                    savemutadosroles()
+
+                    await reg_tp.send(content='❗ [{}] Cargo watchdog adicionado ao {.mention} e {.mention}, entraram em menos de {} minutos'.format(currenttime(), member, oldmember, round(datetime.timedelta.total_seconds(lastuserjoin - lastlastuserjoin)/60, 2)))
+                    
+                    global raidcontrol
+
+                    if not raidcontrol:
+                        raidcontrol = {}
+                        raidcontrol.update({datetime.datetime.now():[oldmember, member]})
+                        #print(raidcontrol)
+                    else:
+                        time=next(iter(raidcontrol.keys()))
+                        if datetime.datetime.now() - time > datetime.timedelta(minutes=1.25):
+                            raidcontrol = False
+                            return
+
+                        
+                        global cargocaveira
+                        for x in raidcontrol.values():
+                            for raideiros in x+[member]:
+                                if '💀' not in str(raideiros.roles):
+                                    #print(raideiros.roles)
+                                    await raideiros.add_roles(cargocaveira)
+                                    lista = []
+                                    for role in oldmember.roles:
+                                        lista.append(role.name)
+                                    mutadosroles.update({oldmember.id: lista})
+                                    savemutadosroles()
+                                    await reg_tp.send(f'Adicionado cargocaveira (intolerância) ao user {member.mention} pois entraram muitos ao mesmo tempo.')
+                            
+                    #print(raidcontrol)
+
+
+
+                except Exception as e:
+                    print(f"Tem algo de errado na atribuição de cargo ao oldmember\n{traceback.format_exc()}")
                 
     except Exception as error:
         global natasmember
@@ -1146,10 +1217,12 @@ async def on_member_join(member):
 
 
 
+
 @client.event
 async def on_member_leave(member):
     c = await client.fetch_channel(registro)
     await c.send(f'[{currenttime()}] {member.mention} saiu do servidor.')
+
 
 
 
@@ -1171,11 +1244,11 @@ async def on_raw_reaction_add(event):
     if event.message_id == clube_id:                    #verifica se a msg é a certa
         if str(event.emoji) == '\U0001F4DA':            #isso aqui é pra somente se o emoji for os livros
             await discord.Member.add_roles(member, livro) #add role
-            await reg_tp.send(content='[{}] Adicionado ao {.mention} Clube do Livro'.format(currenttime(), member))
+            await reg_tp.send(content='✅ [{}] Adicionado ao {.mention} Clube do Livro'.format(currenttime(), member))
     if event.message_id == grupo_id:
         if str(event.emoji) == '\U0001F4DA':
             await discord.Member.add_roles(member, estudos)
-            await reg_tp.send(content='[{}] Adicionado ao {.mention} Grupo de Estudos'.format(currenttime(), member))
+            await reg_tp.send(content='✅ [{}] Adicionado ao {.mention} Grupo de Estudos'.format(currenttime(), member))
 
 
     #parte que faz o bgl de aprovação da sugestão de filme
@@ -1187,9 +1260,9 @@ async def on_raw_reaction_add(event):
         await msg.add_reaction('\U0001F44D')
         await msg.add_reaction('\U0001F44E')
     
-    #regiões do país
-
     
+    
+    #regiões do país
     if event.channel_id == 697863869707845682:
         global roles
         global roles_emoji
@@ -1200,7 +1273,7 @@ async def on_raw_reaction_add(event):
         msg = await c.fetch_message(event.message_id)
 
         if not spammerdebomdialimiter(member):
-            await event.member.send(f"{event.member.mention}\ncalma lá meu parceiro, vá mais com calma nas reações aí!")
+            await event.member.send(f"{event.member.mention}\ncalma lá meu parceiro, vá mais com calma nas reações aí! Espere 1 minuto antes de tentar novamente.")
             for react in msg.reactions:
                 await react.remove(member)
             return
@@ -1245,11 +1318,13 @@ async def on_raw_message_delete(event):
         if event.cached_message.author.bot: return
     except:
         print(f'mensagem apagada porém não estava no cache.')
+
     canal = await client.fetch_channel(event.channel_id)
     reg_tp = await client.fetch_channel(registro)
+
     try:
-        if event.cached_message.content == '': await reg_tp.send(f'[{currenttime()}] uma mensagem de {event.cached_message.author.mention} foi apagada no canal {canal.mention}. Não havia texto, somente um attachment. Segue abaixo.', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
-        if event.cached_message.content != '': await reg_tp.send(content=f'[{currenttime()}] uma mensagem de {event.cached_message.author.mention} foi apagada no canal {canal.mention}. \n> {event.cached_message.content}', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
+        if event.cached_message.content == '': await reg_tp.send(f'🛑 [{currenttime()}] uma mensagem de {event.cached_message.author.mention} foi apagada no canal {canal.mention}. Não havia texto, somente um attachment. Segue abaixo.', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
+        if event.cached_message.content != '': await reg_tp.send(content=f'🛑 [{currenttime()}] uma mensagem de {event.cached_message.author.mention} foi apagada no canal {canal.mention}. \n> {event.cached_message.content}', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
     except:
         pass
 
@@ -1261,33 +1336,329 @@ async def on_raw_message_delete(event):
 
 
 
-@client.command(pass_context=True)
+
+
+@client.event
+async def on_message_edit(b, a):
+
+    if a.content == b.content: return
+
+    try:
+        await reg_tp.send(content=f'✏️ [{currenttime()}] uma mensagem de {a.author.mention} foi editada no canal {a.channel.mention}. link: http://discordapp.com/channels/{a.guild.id}/{a.channel.id}/{a.id} \nantes\n> {b.content}\ndepois\n> {a.content}', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
+    except Exception as e:
+        print(f"some error. on_message_edit {e}")
+
+
+
+
+
+@client.command()
 async def join(ctx):
+    if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
     with ctx.message.channel.typing():
+        if ctx.channel.name != 'bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, use este comando no chat de bots!')
+        
         global voicechannel
         channel = ctx.message.author.voice.channel
         voicechannel = await channel.connect(reconnect=True)
         await ctx.send(f'Conectado ao canal {voicechannel.name}!')
 
 
-
-@client.command(pass_context=True)
+@client.command()
 async def leave(ctx):
+    if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
     with ctx.message.channel.typing():
         global voicechannel
         await voicechannel.disconnect(force=True)
         await ctx.send(f'{ctx.message.author.mention}, desconectado do canal {voicechannel.name}!')
 
 
-
-@client.command(pass_context=True)
-async def play(ctx, url):
+@client.command()
+async def play(ctx, url: str):
+    pass
+    '''
     global voicechannel
     with ctx.message.channel.typing():
-        #player = await voicechannel.play(create_ytdl_player(url))
-        #player.start()
-        await ctx.message.channel.send("comando ainda não implementado meu brodi")
+        if os.path.isfile("Song.mp3"):
+            os.remove("Song.mp3")
+            print("removed file")
+            return
+        
+        await ctx.send(f"going do download the music file")
 
+        voice = discordget(client.voice_clients, guild=ctx.guild)
+
+        YTDL_OPTIONS = {
+        'format': 'bestaudio/best',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192'
+        }]
+        }
+
+        with youtube_dl.YoutubeDL(YTDL_OPTIONS) as ydl:
+            print("yeah we've got there")
+            ydl.download([url])
+
+
+        for file in os.listdir("./"):
+            if file.endswith(".mp3"):
+                name = file
+                print(f'renamed file: {file}')
+                os.rename(file, "Song.mp3")
+
+        
+        voicechannel.play(discord.FFmpegPCMAudio("Song.mp3"), after=None)
+
+        voicechannel.source = discord.PCMVolumeTransformer(voice.source)
+        voicechannel.source.volume = 0.07
+
+
+        await ctx.send(f'playing {name}')
+        print('playing')
+        '''
+
+
+@client.command()
+async def digitando(ctx, second: int):
+    if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
+    if not "Administrador" in str(ctx.message.author.roles): return
+    with ctx.channel.typing():
+        if second > 99: return
+        await waiting(second, ctx, ctx.message.content[12+len(str(second)):])
+
+
+@client.command()
+async def grupodeestudos(ctx):
+    
+    global limiter1dia
+
+    author = ctx.message.author
+    channel = ctx.message.channel
+
+    if author.id in limiter1dia:
+        await ctx.message.channel.send(f'{author.mention}, aguarde para usar este comando novamente!'); return
+
+    limiter1dia.update({author.id: datetime.datetime.now()})
+
+    if '..' in str(author.roles) or datetime.datetime.now() - author.joined_at < datetime.timedelta(days=7) or 'Grupo de Estudos' not in str(author.roles): 
+        await ctx.channel.send(f'{ctx.message.author.mention}, você não tem permissão para usar este comando!')
+        return
+    else:
+        await ctx.message.channel.send(f'{discordget(ctx.message.guild.roles, name="Grupo de Estudos").mention}, {author.mention} mencionou vocês para estudar!'); 
+
+
+@client.command()
+async def dice(ctx):
+    
+    message = ctx.message
+    channelsend = message.channel.send
+    author = message.author
+
+    #RPG stuff
+    if True:
+
+        global lasttimedonecommand
+
+        with message.channel.typing():
+            if not 'd' in message.content[6:]: await channelsend(f'{author.mention}, por favor use no formato **X**d**Y**, onde X é o número de dados, e Y é o número de lados de cada dado.'); return
+            if message.content[6:].count('d') > 1: await channelsend(f'{author.mention}, por favor use meu comando corretamente.'); return
+            numeroDeDados, lados = message.content[6:].split('d')
+            #if any(i in invalidCharacters for i in numeroDeDados.lower()) or any(i in invalidCharacters for i in lados.lower()): await channelsend(f'{message.author.mention}, use números por favor.'); return
+            try:
+                if int(numeroDeDados) < 1 or int(lados) < 1: await channelsend(f'{author.mention}, use números válidos por favor.'); return
+            except:
+                await channelsend(f'{author.mention}, use números por favor.'); return
+            tip = '\nDica: só é suportado até 5 dados jogados.' if int(numeroDeDados) >= 6 else ''
+            if int(numeroDeDados) >= 6 or len(lados) > 4: await channelsend(f'{author.mention}, use números menores. {tip}'); return
+            
+            #after verified its valid input:
+
+            try:
+                if datetime.datetime.now() - lasttimedonecommand < datetime.timedelta(seconds=20):
+                    await channelsend(f"Aguarde antes de emitir um novo comando Dice.")
+                    return
+                else:
+                    lasttimedonecommand = datetime.datetime.now()
+            except:
+                lasttimedonecommand = datetime.datetime.now()
+
+            #do the math:
+            i=1#;ladosList = []
+            """
+            while i <= int(lados): #never do this. never.
+                ladosList.append(i)
+                i+=1
+            """; sum = 0
+            
+            i=1
+            with message.channel.typing():
+                await channelsend(f"Jogando **{numeroDeDados}** dados de **{lados}** lados {author.mention}!")
+                while i <= int(numeroDeDados):
+                    result = round(quantumrandom.randint(1, int(lados)))
+                    await channelsend(f'Dado {i} jogado, valor: **{result}**!', delete_after=10)
+                    sum += result
+                    i+=1
+            await channelsend(f"{i} dados foram jogados! Soma resultou em **{sum}**!")
+
+
+@client.command()
+async def uptime(ctx):
+    if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
+    await ctx.message.channel.send(f'`Bot uptime is {datetime.datetime.now() - started}`')
+
+
+@client.command()
+async def ping(ctx):
+    if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
+    await ctx.message.channel.send(f'Ping: {round(client.latency*1000)}ms')
+
+
+@client.command(aliases=['ajuda'])
+async def help(ctx):
+    global setorajuda
+    if True:                                        #comando de ajuda #procura o canal com id regras, pra mencionar nas DM's depois
+
+        embed = discord.Embed(                      #aqui a gente escreve o embed (texto com formatação top q vai ser enviada nas DM's de quem entra)
+            title = '⇝ **Ajuda: The Project!** ⇜',
+            colour = discord.Color.blue()
+        )
+
+        for x in setorajuda:
+            embed.add_field(name='**'+x+'**', value=setorajuda[x], inline=False)
+        embed.set_footer(text='Criado por Natas#9686 e Will#1687')
+        await ctx.message.channel.send(embed=embed)
+
+
+@client.command()
+async def mostrarboasvindas(ctx):
+    embed = getboasvindasembed(ctx.message.author)
+    await ctx.message.channel.send(embed=embed)
+    
+
+@client.command()
+async def mensagemDM(ctx):
+    if 'Administrador' not in str(ctx.message.author.roles): await ctx.message.channel.send(f'{ctx.message.author.mention}, este comando só pode ser usado por administradores!'); return
+    if not ctx.message.mentions: await ctx.message.channel.send(f'{ctx.message.author.mention}, você precisa mencionar alguém para enviar a mensagem!'); return
+    await ctx.message.mentions[0].send(ctx.message.content[34:])
+
+
+@client.command()
+async def github(ctx):
+    await ctx.message.channel.send(f"{ctx.message.author.mention}, aqui está o repositório:\n https://github.com/NatasFX/TheProjectBot ")
+
+
+@client.command()
+async def sugerirfilme(ctx):
+
+    message = ctx.message
+    author = message.author
+    channelsend = message.channel.send
+
+
+    if message.channel.name == 'bots': #comando $sugerirfilme é ativo quando eventofilme for True
+        global eventofilmelista
+        global listasugestãofilme
+        if eventofilme:                                                     #se o evento de filme esstiver ativo
+            if eventofilmelista.get(message.author.id) is None or len(eventofilmelista.get(message.author.id)) <= 2:
+                if not extractor.has_urls(message.content):                 #se conter links ele não vai escutar
+                    if message.author.id in eventofilmelista.keys():#verifica se o cara já fez alguma sugestão
+                        eventofilmelista.get(message.author.id).append(message.content[14:])
+                    else:
+                        eventofilmelista.update({
+                            message.author.id:[message.content[14:]]
+                        })
+                    
+
+                    staff = discordget(message.guild.channels, name='staff')#pega o canal para envio da solicitação de aprovação
+                    
+                    msg = await staff.send(content=f'Nova sugestão de filme de {author.mention}: \n\"{message.content[14:]}\"\nDeseja aprovar essa sugestão?')
+                    await msg.add_reaction(':like:547068425067954196')
+                    await msg.add_reaction('\U0001F44E')                    #envia a solicitação junto das reações para aprovação ou n
+                    listasugestãofilme.update({                             #atualiza a lista com id da mensagem de solicitação e o filme escolhido
+                        msg.id:[message.content[14:],author.id]
+                    })
+                    savelistasugestãofilme()                                #salva a lista no txt
+                    await channelsend(f'{author.mention}, sua sugestão foi enviada, muito obrigado! {str(gettplove(message))}')
+                    await channelsend(f'Você tem mais {3-len(eventofilmelista[message.author.id])} sugestões de filme')
+                    saveeventofilmelista()                                  #mostra quantas sugestões de filme ainda podem ser feitas
+                    return                                                  #sempre bom ter
+                else:
+                    await channelsend(f'{author.mention}, ops! aconteceu um erro.')
+                    return
+            else:
+                await channelsend(content=f'{author.mention}, você não pode fazer mais que 3 sugestões!')
+        else:
+            await channelsend(f'{author.mention}, o evento de filme não está ativo no momento ou você já fez uma sugestão.')
+            return
+    else:
+        await channelsend(f'{author.mention}, use o canal de #bots por favor!', delete_after=5)
+
+
+@client.command(aliases=['versugestões'])
+async def versugestão(ctx):
+
+    message = ctx.message
+    author = message.author
+    channelsend = message.channel.send
+
+    if message.channel.name == 'bots' and eventofilme: #'$versugestão' in message.content[0:13] and message.channel.name in ['bots'] or '$versugestões' in message.content[0:14] and message.channel.name in ['bots']:
+        if not message.mentions:                            #se o user não mencionou ninguém, mostrar as sugestões dele
+            if author.id in eventofilmelista:               #verifica se ele já fez sugestão
+                try:                                        #aqui abaixo envia as sugestões referente ao user que pede
+                    await channelsend(content=f'{author.mention}, segue sua(s) sugestão(ões) de filme(s):\n{eventofilmelista[author.id][0]}')
+                    await channelsend(content=f'{eventofilmelista[author.id][1]}')
+                    await channelsend(content=f'{eventofilmelista[author.id][2]}')
+                except:
+                    await message.channel.send(f'Você ainda pode fazer mais {3-len(eventofilmelista[author.id])} sugestão(ões).')
+            if message.author.id not in eventofilmelista:
+                await message.channel.send(f'Você não fez uma sugestão ainda {author.mention}, faça uma usando o comando $sugerirfilme')
+                return
+        
+        if message.mentions:                                #se ele mencionou alguém, mostrar sugestões de quem foi mencionado
+            try:
+                if message.mentions[0].id in eventofilmelista:
+                    try:                                    #aqui abaixo envia as sugestões
+                        await channelsend(content=f'{message.author.mention}, essas são as sugestões do {message.mentions[0].mention}:')
+                        await channelsend(content=f'{eventofilmelista[message.mentions[0].id][0]}')
+                        await channelsend(content=f'{eventofilmelista[message.mentions[0].id][1]}')
+                        await channelsend(content=f'{eventofilmelista[message.mentions[0].id][2]}')
+                    except:
+                        pass
+                else:
+                    await channelsend(f'{author.mention}, usuário {message.metions[0].mention} não sugeriu filme.')
+
+            except:
+                return
+    else:
+        await channelsend(f'{author.mention}, use este comando no chat de bots!', delte_after=10)
+
+
+@client.command(aliases=['apagarsugestões'])
+async def apagarsugestão(ctx):
+
+    message = ctx.message
+    author = message.author
+    channelsend = message.channel.send
+
+    if message.channel.name == 'bots' and eventofilme:  #comando para apagar as sugestões previamente feitas para realizar novas.
+        msg = await channelsend(f'{author.mention}, você deseja apagar suas sugestões de filme?', delete_after=60)
+        await msg.add_reaction('\U0001F44D')
+        await msg.add_reaction('\U0001F44E')
+        
+        def check(reaction, user):
+            if str(reaction.emoji) != '👍':
+                return
+            return user == author and str(reaction.emoji) == '👍'
+
+        try:
+            reaction, user = await client.wait_for('reaction_add', timeout=60.0, check=check)
+        except asyncio.TimeoutError:
+            pass#await channel.send('Você demorou muito para responder, operação cancelada!', delete_after=5)
+        else:
+            del eventofilmelista[author.id]
+            await channelsend('Sugestões de filmes apagados com sucesso!')
 
 
 client.run(secret.key)
