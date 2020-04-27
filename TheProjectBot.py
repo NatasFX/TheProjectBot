@@ -1,8 +1,8 @@
 #Bot do Servidor The Project
 #Autoria: Natas#9686 e Will#1687
 
-#importar módulos
-from secret import secret
+#importar módulos ----------------------------------
+from secret import secret                           #token e mac_addr
 import discord                                      #Importando API do discord
 from discord.ext import commands                    #Facilitar pra criar comandos
 import datetime                                     #datetime, melhor módulo pra manejamento de tempo
@@ -15,7 +15,7 @@ from urlextract import URLExtract                   #extrator de URL's
 extractor = URLExtract()                            #definindo o extrator pra ficar com menos texto
 import threading                                    #threading que por enquanto n estou usando
 from sysinfo import getsysinfo                      #meu módulo pra retornar a informação de sistema
-from wakeonlan import send_magic_packet             #pra acordar meu pc
+from wakeonlan import send_magic_packet             #pra acordar meu pc (q n tenho mais)
 import pyscreenshot as ImageGrab                    #imagegrab pra tirar screenshots
 import logging                                      #meio que inútil
 import pickle                                       #fazer os salvamentos das listas
@@ -25,22 +25,22 @@ import traceback                                    #nem lembro mais
 import asyncio                                      #TimeOutError
 import youtube_dl                                   #player de música
 from nudity import Checker                          #pra fazer checks de nudez nas imagens de pessoas com cargo2pontos
-import multiprocessing
-import quantumrandom                               #real random generator
-#-----------------
+import multiprocessing                              #algum dia isso aqui vai funcionar
+import quantumrandom                                #real random generator
+#---------------------------------------------------
 
 
-#logger de eventos do discord.py, é para debugging.
+
+"""#logger de eventos do discord.py, é para debugging.
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler)
+logger.addHandler(handler)"""
 
 
 
-
-#especficar ID's
+#especficar ID's------------------------------------
 emoji = ':like:547068425067954196'                  #id do emoji customizado, foi pego usando \:like:
 clube_id = 674680642583134209                       #id do texto para ser reagido no clube do livro
 jamesid = 567835811123560478                        #id do james
@@ -51,13 +51,15 @@ natasid = 283345376231292929                        #id do meu user para estreit
 willid = 258775759324184586                         #id do will
 bate_papo_mirror = 701184727796940910               #dentadura
 natasaltid = 536984029564764162                     #id Natas'     
-#-------------- 
+#---------------------------------------------------
 
-#todo list:
+
+
+#todo list: ---------------------------------------------------------------------
 #james gado - done
 #log - done
 #games -talvez em outra vida
-#ativos n precisar de 1 msgs só pra continuar ativos. -DEPRECATED
+#ativos n precisar de 1 msgs só pra continuar ativos. - DEPRECATED
 #persistence no cargo de .. - DONE
 #não apagar mensagens contento ass que sejam do tenor - DONE
 #persistence nos mutados - DONE
@@ -66,14 +68,16 @@ natasaltid = 536984029564764162                     #id Natas'
 #corrigir o rich presence que estava atualizando errado - DONE
 #atualizar para dev e usar AllowedMentions - DONE
 #pseudo-random menos random para o dice - DONE
-#whitelist para counterar falsos positivos dos links contendo ass e tal 
+#whitelist para counterar falsos positivos dos links contendo ass e tal - DONE
 #persistence no bom dia
-#um único save para salvar todos os tipos de listas/dicionários
+#um único save para salvar todos os tipos de listas/dicionários - DONE
 #USAR COGS
+#reg_tp usando embeds
+#---------------------------------------------------------------------------------
 
 
 
-#iniciando variáveis úteis
+#iniciando variáveis úteis -------------------------------------------------------------
 entradasdeuserstempo = []                                                               #salva o tempo de entrada de users novos
 entradasmembros = []                                                                    #salva os membros novo
 newmembernumber = -1                                                                    #membro número
@@ -82,7 +86,7 @@ imageextensions = ['.png', '.jpg', '.webp', '.jpeg', '.mp4', '.3gp',
 blacklist = ['pornhub', 'xvideos', 'xxx', 'xnxx', 'xhamster', 'porn',                   #sinalizar como porn
      'boobs', 'ass', 'pussy', 'dick', 'asshole', 'sex', 'discord.gg']
 redirects = ['bit.ly', 'goo.gl', 'adf.ly', 'tinyurl', 'ow.ly']                          #sinalizar redirects
-whitelist = ['tenor.com', '']
+whitelist = ['tenor.com']
 mensagemflood = 300                                                                     #número de caracteres antes de ser considerado mensagem como spam
 membrosativos = []                                                                      #inicia lista de ativos, aqui vão os objetos membros
 membrosativosvalores = []                                                               #inicia a lista onde ficam o nº de mensagens, correspondente ao index do membrosativos
@@ -118,27 +122,32 @@ lastuserjoin = ''
 lastlastuserjoin = ''
 attachmentsApagados = {}
 discordget = discord.utils.get                                                          #usar . pra pegar atributos muitas vezes é mais lento.
-roles = ['Centro-Oeste','Sudeste', 'Sul','Nordeste','Norte']
-roles_emoji = ['🌿','🍞','🧉','🌴','🧭']
-voicechannel = ''
-cargospegos = False
-guild = ''
-member = ''
-ademir = ''
-mutedrole = ''
-cargo2pontos = ''
-cargocaveira = ''
-reg_tp = ''
-mirrorchannel = ''
-lasttimedonecommand = ''
-limiter1dia = {}
-raidcontrol = False
-mutadosroles = {}
-saudações = {'bom dia': [], 'boa tarde':[], 'boa noite': []}
-#-------------------------
+roles = ['Centro-Oeste','Sudeste', 'Sul','Nordeste','Norte']                            #mesma coisa
+roles_emoji = ['🌿','🍞','🧉','🌴','🧭']                                               #global que n precisava ser global mas tá aí
+voicechannel = ''                                                                       #eh... complicado
+cargospegos = False                                                                     #inicializador de muitas variáveis. usado no on_message
+guild = ''                                                                              #nem lembro
+member = ''                                                                             #^
+ademir = ''                                                                             #variável global para o cargo de Administrador
+mutedrole = ''                                                                          #variável global para o cargo de mutado
+cargo2pontos = ''                                                                       #variável global para o cargo2pontos
+cargocaveira = ''                                                                       #variável global para o cargocaveira
+reg_tp = ''                                                                             #variável global para enviar msg pro reg_tp
+mirrorchannel = ''                                                                      #global variable representing the batepapo mirror channel
+lasttimedonecommand = ''                                                                #dicelimiter
+limiter1dia = {}                                                                        #limiter1dia é pro $grupodeestudos
+raidcontrol = False                                                                     #inicialização do raidcontrol, para keep track dos que entram no sv mt rápido (1,5m)
+mutadosroles = {}                                                                       #importante variável, o nome é mutados mas é para todos os que o bot já givou cargo. salvado frequentemente no mutadosroles.txt. dict.
+saudações = {'bom dia': [], 'boa tarde':[], 'boa noite': []}                            #guardar quem já foi "saudado"
+bate_papo_ids = {}                                                                      #keep track of sent messages and their respective parent
+lastusersent = 0                                                                        #pra o bot não repetir o header em casa msg no bate papo mirror
+#---------------------------------------------------------------------------------------
 
 
-class attachment:                                                                      #útilidade pública
+
+#definição de funções --------------------------
+
+class attachment:                               #útilidade pública
     def __init__(self, time, message_id, channel_name, author, filename, fileformat, nomearquivo):
         self.time = time
         self.message_id = message_id
@@ -148,10 +157,10 @@ class attachment:                                                               
         self.fileformat = fileformat
         self.nomearquivo = nomearquivo
 
-def gettplove(message):
+def gettplove(message):                         #pra usar no send content de agradecimento
     return discordget(message.guild.emojis, id=522462442366828574)      #representa o emoji tplove, para mostrar, usa-se str(tplove)
 
-def getboasvindasembed(member):
+def getboasvindasembed(member):                 #retorna o embed de boas vindas. usado no comando e no on_member_joins
     channel = member.guild.get_channel(regras)
     embed = discord.Embed(              #aqui a gente escreve o embed (texto com formatação top q vai ser enviada nas DM's de quem entra)
         title = '⇝ **Seja bem-vindo(a) ao The Project!** ⇜',
@@ -162,7 +171,7 @@ def getboasvindasembed(member):
 
     return embed
 
-def daypass():                              #esta função retorna True na primeira vez executada, e True somente uma vez a cada 24 horas.
+def daypass():                                  #esta função retorna True na primeira vez executada, e True somente uma vez a cada 24 horas.
     global initialtime                                                                  #pega a variável que definimos globalmente, pois local não se aplica a eventos (ex. on_message não requer chamar a variável como global, mas def sim)
     if round(time.time()/86400, 0) > initialtime:                                       #pega o tempo atual e compara com o initial time, que é na primeira vez 0, e depois o tempo antes de ser feito qualquer comparação.
         initialtime = round(time.time()/86400, 0)
@@ -171,7 +180,7 @@ def daypass():                              #esta função retorna True na prime
         initialtime = round(time.time()/86400, 0)
         return False
     
-def log(information):                       #função experimental ainda não implementada
+def log(information):                           #função experimental ainda não implementada
     '''
     with open(str(lista)+'.txt', 'w') as f:                                             #objetivo é ao pressionar combinação de tecla, salvar a lista de ativos para depois ler ao pressionar a mesma ou combinação diferente.
         for item in lista:
@@ -179,112 +188,33 @@ def log(information):                       #função experimental ainda não im
     '''
     logging.info(information)
 
-def aprovarsugestão(member, message):       #usado por staff para aprovar sugestões (dã)
+def aprovarsugestão(member, message):           #usado por staff para aprovar sugestões (dã)
     channel = discordget(member.guild.channels, name='sugestões-de-filmes')
     return channel.send(content=str(message))
 
-def is_troller(m):                      #aqui usamos a variável tempmember para checar nas mensagens que serão apagadas pertecem ao membro desordeiro, retorna True se a mensagem será apagada.
+def is_troller(m):                              #aqui usamos a variável tempmember para checar nas mensagens que serão apagadas pertecem ao membro desordeiro, retorna True se a mensagem será apagada.
     global tempmember
     return m.author == tempmember
 
 
-def savelistasugestãofilme():
-    global listasugestãofilme
-    with open('listasugestãofilme.txt', 'wb') as f:
-        pickle.dump(listasugestãofilme, f)
-
-def saveativos():
-    with open("ativos.txt", "wb") as fp:   #Pickling
-        pickle.dump(membrosativos, fp)
-
-def savetimes():
-    with open("times.txt", "wb") as fp:   #Pickling
-        pickle.dump(membrosativostimes, fp)
-
-def savevalores():
-    with open("valores.txt", "wb") as fp:   #Pickling
-        pickle.dump(membrosativosvalores, fp)
-
-def saveeventofilmelista():
-    global eventofilmelista
-    with open('eventofilmelista.txt', 'wb') as f:
-        pickle.dump(eventofilmelista, f)
-
-def savedirectmessages():
-    global directmessages
-    with open('directmessages.txt', 'wb') as f:
-        pickle.dump(directmessages, f)
-
-def savemutadosroles():
-    global mutadosroles
-    with open('mutadosroles.txt', 'wb') as f:
-        pickle.dump(mutadosroles, f)
-
-
-
-def loadmutadosroles():
-    global mutadosroles
+def savelista(variable, variablename):          #apaguei umas 10 funções e criei só uma que foi essa
     try:
-        with open('mutadosroles.txt', 'rb') as f:
-            mutadosroles = pickle.load(f)
+        with open(f'{variablename}.txt', 'wb') as file:
+            pickle.dump(variable, file)
+        return True
     except:
-        with open('mutadosroles.txt', 'wb') as f:
-            pickle.dump(mutadosroles, f)
+        return False
 
-def loadlistasugestãofilme():
-    global listasugestãofilme
-    try:
-        with open('listasugestãofilme.txt', 'rb') as f:
-            listasugestãofilme = pickle.load(f)
-    except:
-        with open('listasugestãofilme.txt', 'wb') as f:
-            pickle.dump(listasugestãofilme, f)
+def loadlista(variable, variablename):          #apaguei umas 10 funções e criei só uma que foi essa
+    if os.access(f"{variablename}.txt", os.R_OK):
 
-def loadativos():
-    global membrosativos
-    try:
-        with open("ativos.txt", "rb") as fp:   # Unpickling
-            membrosativos = pickle.load(fp)
-    except:
-        with open("ativos.txt", "wb") as fp:   # Unpickling
-            pickle.dump(membrosativos, fp)
+        with open(f"{variablename}.txt", 'rb') as file:
+            return pickle.load(file)
+    else:
+        savelista(variable, variablename)
+    
 
-def loadtimes():
-    global membrosativostimes  
-    try:
-        with open("times.txt", "rb") as fp:   # Unpickling
-            membrosativostimes = pickle.load(fp)
-    except:
-        n = 0
-        while n < 1000:
-            membrosativostimes.append(0)                                                  #enche de zero, pra dar pop e insert, append coloca no fim da lista e não queremos isso
-            n += 1
-        with open("times.txt", "wb") as fp:   # Unpickling
-            pickle.dump(membrosativostimes, fp)
-
-def loadvalores():
-    global membrosativosvalores
-    try:
-        with open("valores.txt", "rb") as fp:   # Unpickling
-            membrosativosvalores = pickle.load(fp)
-    except:
-        n = 0
-        while n < 1000:
-            membrosativosvalores.append(0)                                                  #enche de zero, pra dar pop e insert, append coloca no fim da lista e não queremos isso
-            n += 1
-        with open("valores.txt", "wb") as fp:   # Unpickling
-            pickle.dump(membrosativosvalores, fp)
-
-def loadeventofilmelista():
-    global eventofilmelista
-    try:
-        with open('eventofilmelista.txt', 'rb') as f:
-            eventofilmelista = pickle.load(f)
-    except:
-        with open('eventofilmelista.txt', 'wb') as f:
-            pickle.dump(eventofilmelista, f)
-
-def resetativo():                       #resetativo é o primeiro reset inicial que damos, é onde as listas são definidas com seus "placeholders"
+def resetativo():                               #resetativo é o primeiro reset inicial que damos, é onde as listas são definidas com seus "placeholders"
     """n=1000
     for i in membrosativosvalores:
         if i !=0:
@@ -307,17 +237,24 @@ def resetativo():                       #resetativo é o primeiro reset inicial 
         membrosativostimes.append(0)
         n += 1
     
-    saveativos()
+    savelista(ativos, 'ativos')
     savetimes()
     savevalores()
     '''
     #loadativos()
     #loadtimes()
     #loadvalores()
-    loadmutadosroles()
+    #loadmutadosroles()
+
+    global mutadosroles, directmessages
+    mutadosroles = loadlista(mutadosroles, 'mutadosroles')
+    directmessages = loadlista(directmessages, 'directmessages')
     if eventofilme:
-        loadeventofilmelista()
-        loadlistasugestãofilme()
+        global eventofilmelista, listasugestãofilme
+        eventofilmelista = loadlista(eventofilmelista, 'eventofilmelista')
+        listasugestãofilme = loadlista(listasugestãofilme, 'listasugestãofilme')
+        #loadeventofilmelista()
+        #loadlistasugestãofilme()
 
     """
         n=1000
@@ -327,7 +264,7 @@ def resetativo():                       #resetativo é o primeiro reset inicial 
 
     #print('Listas iniciadas\nslots restantes:')#, membrosativos, membrosativostimes, membrosativosvalores)
     
-def resetlista():                       #aqui resetamos a lista, a lista na qual pertence os valores, já que não é necessário reiniciar tudo.
+def resetlista():                               #aqui resetamos a lista, a lista na qual pertence os valores, já que não é necessário reiniciar tudo.
     global membrosativosvalores
     membrosativosvalores = []
     n = 0
@@ -336,27 +273,22 @@ def resetlista():                       #aqui resetamos a lista, a lista na qual
         n += 1
     print('Lista de ativos valores foi RESET!')
 
+resetativo()                                    #inicia as listas, desligado pois as listas de ativos foram desabilitadas, religado pois tem mais coisa do que lista de ativos dentro da func
 
-resetativo()                            #inicia as listas, desligado pois as listas de ativos foram desabilitadas, religado pois tem mais coisa do que lista de ativos dentro da func
-
-
-def getadmincargos(member):
+def getadmincargos(member):                     #definir o cargo de adm, mas nem usamos mais pq os cargo agr é tudo global ent sla
     cargoadministrador = discordget(member.guild.roles, name="Administrador")    #seta o cargo ademiro
     cargomoderador = discordget(member.guild.roles, name="Moderador")            #seta o cargo moderador
     return cargoadministrador, cargomoderador
 
-
-def avisomuteDM(message):               #aqui é enviado a mensagem de aviso para o usuário que tomou mute automaticamente
+def avisomuteDM(message):                       #aqui é enviado a mensagem de aviso para o usuário que tomou mute automaticamente
     #will = discordget(message.guild.members, id=willid)
     natas = discordget(message.guild.members, id=natasid)
     return message.author.send(content='{.mention}\n*Esta é uma mensagem automática* \n\nOlá, você fui mutado temporariamente no servidor The Project por comportamento potencialmente indesejado, suas mensagens foram salvas e serão posteriormente avaliadas por um moderador.\nSe você acredita que isso é um erro, informe a staff (preferencialmente {.mention}) por favor.\n\nAtenciosamente, equipe The Project.'.format(message.author, natas))
 
-
-def currenttime():                      #retorna uma string com a data e hora atual com precisão de segundos e não aqueles microsegundos quebrados.
+def currenttime():                              #retorna uma string com a data e hora atual com precisão de segundos e não aqueles microsegundos quebrados.
     return datetime.datetime.now().strftime('%d.%h.%Y %H:%M:%S')
 
-
-def spammerdebomdialimiter(member):
+def spammerdebomdialimiter(member):             #limitador de bom dia mas que eu uso em mts outros lugares tbm pra controle de fluxo aosdijasdoasd
     global bomdiacooldown
     try:
         bomdiacooldown[member]
@@ -371,8 +303,7 @@ def spammerdebomdialimiter(member):
         })
         return True
 
-
-def coolactivity():                     #randomicamente escolhe dentro dessa lista alguma atividade pro bot mostrar, 10% de chance dele pegar alguma da lista em cada mensagem.
+def coolactivity():                             #randomicamente escolhe dentro dessa lista alguma atividade pro bot mostrar, 10% de chance dele pegar alguma da lista em cada mensagem.
     lista = [
 
         'The Project',
@@ -412,6 +343,8 @@ def coolactivity():                     #randomicamente escolhe dentro dessa lis
         '[̲̅b][̲̅u][̲̅g][̲̅s] [̲̅p][̲̅r][̲̅o] [̲̅a][̲̅l][̲̅t][̲̅o]',
         'b̸͇͕͕̱̜͔̓͐͜u̴̦͇͂͐͋̓̽͌̅͑̕g̴̠̾̽̆͑s̶̘͎͙͍͒̉̀̐͘ͅ ̷̘̘̦͛͛̍̄̀̇̆͋͠ṗ̵̖̗̎͐͝ṟ̶̼̳͚̬̣͉̓̒̀̈́̑̑̓͑̽ơ̵̢̻͍̤͎͎̾͆͊̉̔̔̀̈́ ̶̨͇̲̜͉̼͌̏́͊͛a̵̤̹̪̿̆̔l̸̡̧͓̜͚͓̖̣̆̽̄͋̐̿̌t̶̪͓̣̬̟̹̹̺͓͖͊̏͋̈́̾̂̕͠o̴͖̗̝̞̣̩͖̣͛͛͊͗',
         'b͓̽u͓̽g͓̽s͓̽ ͓̽p͓̽r͓̽o͓̽ ͓̽a͓̽l͓̽t͓̽o͓̽',
+        'pra esquecer a morena 😔',
+        'pra esquecer a morena 😔',
         'pra esquecer a morena 😔'
         ]
     
@@ -419,7 +352,7 @@ def coolactivity():                     #randomicamente escolhe dentro dessa lis
     global lastplayingchange
     if a > 4:
         try:
-            if datetime.datetime.now() - lastplayingchange[0] > datetime.timedelta(minutes=2):
+            if datetime.datetime.now() - lastplayingchange[0] > datetime.timedelta(minutes=5):
                 lastplayingchange = [datetime.datetime.now(), random.choice(lista)]
                 return lastplayingchange[1]
             else:
@@ -432,66 +365,67 @@ def coolactivity():                     #randomicamente escolhe dentro dessa lis
         except:
             return 'The Project'
 
-
 async def waiting(seconds, ctx, text):
     await asyncio.sleep(seconds)
     await ctx.channel.send(text)
+#-----------------------------------------------
 
 
 
-
-
-#client = discord.Client()                                  #nem sei pq isso existe, HOJE EU SEI
-#client.allowed_mentions(everyone = False)
+#definição do cliente.
 client = commands.Bot(command_prefix = '$', help_command=None, allowed_mentions=discord.AllowedMentions(everyone=False))                 #isso eu sei         
+#--------------------
+
+
+
+
+@client.event
+async def on_ready():                                                   #on_ready é chamado quando o bot está pronto
+    print(f'[{currenttime()}]\tlogged on as {client.user}!')
+
 
 
 
 
 
 @client.event
-async def on_ready():
-    print(f'[{currenttime()}]Logged on as {client.user}!')
-
-
-
-
-
-
-@client.event
-async def on_raw_reaction_remove(event):
+async def on_raw_reaction_remove(event):                                #on_raw_reaction_remove é chamado quando uma mensagem independente do cache teve uma reação removida.
     #raw pq se não for raw, ele não escuta os reacts em mensagens que foram enviadas antes de iniciar o bot
-    userid = event.user_id                                  #pega o id de quem reagiu
-    guild = client.get_guild(id=event.guild_id)             #pega a guild
-    member = guild.get_member(userid)                           #procura o objeto membro correspondente ao id dentro da guild
+
+    userid = event.user_id                                              #pega o id de quem reagiu
+    guild = client.get_guild(id=event.guild_id)                         #pega a guild
+    member = guild.get_member(userid)                                   #procura o objeto membro correspondente ao id dentro da guild
     memberroles = member.roles
     guildroles = member.guild.roles
     reg_tp = guild.get_channel(registro)
+
     if event.channel_id != 697863869707845682:
-        livro = discordget(member.guild.roles, name="Clube do Livro") #encontra a role de clube do livro, mesma coisa em baixo
+        livro = discordget(member.guild.roles, name="Clube do Livro")   #encontra a role de clube do livro, mesma coisa em baixo
         estudos = discordget(member.guild.roles, name="Grupo de Estudos")
-        id = event.message_id                                   #pega o id a mensagem reagida e verifica se a mensagem reagida é a mesma do clube do livro ou estudos
+        id = event.message_id                                           #pega o id a mensagem reagida e verifica se a mensagem reagida é a mesma do clube do livro ou estudos
         if id == clube_id:
             if str(event.emoji) == '\U0001F4DA':
-                await discord.Member.remove_roles(member, livro)#tira a role
-                await reg_tp.send(content='❌ [{}] Removido de {.mention} Grupo de Estudos'.format(currenttime(), member)) #escreve no log
+                await discord.Member.remove_roles(member, livro)        #tira a role
+                lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
+                await reg_tp.send(content='❌\t[{}] Removido e salvo {.mention} de {.mention}'.format(currenttime(),livro, member)) #escreve no log
         
         if id == grupo_id:
             if str(event.emoji) == '\U0001F4DA':
                 await discord.Member.remove_roles(member, estudos)
-                await reg_tp.send(content='❌ [{}] Removido de {.mention} Grupo de Estudos'.format(currenttime(), member))
+                await reg_tp.send(content='❌\t[{}] Removido e salvo {.mention} de {.mention}'.format(currenttime(), estudos,  member))
     
 
     #referente à tag região
     global roles
     global roles_emoji
 
-    if event.channel_id == 697863869707845682:                  #se o canal é o certo
-        for item in roles:                                      #itera sobre todas as roles
+    if event.channel_id == 697863869707845682:                          #se o canal é o certo
+        for item in roles:                                              #itera sobre todas as roles
             if hash(event.emoji.name) == hash(roles_emoji[roles.index(item)]) and item in str(memberroles): #verifica se o emoji removido está dentro da lista
                 await member.remove_roles(discordget(guildroles, name=item)) #se sim, ele retira a role
-                reg = await client.fetch_channel(registro)      #e envia no reg_tp as infos
-                await reg.send(f'Removido role \"{item}\" ao usuário {member.mention}')
+                reg = await client.fetch_channel(registro)              #e envia no reg_tp as infos
+                lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
+                await reg.send(f'Removido e salvo role \"{item}\" ao usuário {member.mention}')
                 return
 
 
@@ -500,14 +434,14 @@ async def on_raw_reaction_remove(event):
 
 
 @client.event
-async def on_message(message):                          #aqui ficam todos os comandos relacionados a mensagens enviadas
+async def on_message(message):                                          #aqui ficam todos os comandos relacionados a mensagens enviadas, é chamado sempre que o bot consegue ver que foi enviado uma mensagem na guild
 
 
-    if message.author.bot:                              #não escutar mensagens de bot. é um boolean.
+    if message.author.bot:                                              #não escutar mensagens de bot. é um boolean.
         return
 
 
-    global cargospegos, guild, member, ademir, mutedrole, cargo2pontos, cargocaveira, reg_tp, mirrorchannel, saudações
+    global cargospegos, guild, member, ademir, mutedrole, cargo2pontos, cargocaveira, reg_tp, mirrorchannel, saudações, bate_papo_ids
     if message.guild != None and cargospegos == False:
 
         guild = message.guild                           #pega a guild
@@ -583,9 +517,9 @@ async def on_message(message):                          #aqui ficam todos os com
     if 'Direct Message' in str(message.channel):
         print(f'Received DM with {message.author} message=\'{message.content}\'')
         directmessages.update({
-            message.author.id:f'[{currenttime()}], \"{message.content}\"'
+            message.author.id:f'[{currenttime()}]\t \"{message.content}\"'
         })
-        savedirectmessages()
+        savelista(directmessages, 'directmessages')
         await message.author.send('O bot não suporta envio de mensagens por mensagem direta, por favor, utilize o canal de #bots em um servidor para seu uso!')
         return
 
@@ -593,8 +527,7 @@ async def on_message(message):                          #aqui ficam todos os com
     if 'obrigado' in messagecontentlower and client.user.mentioned_in(message=message): #se agradecer o bot, responder com uma mensagem legal
         await message.channel.send(f'Disponha, {message.author.mention} {str(gettplove(message))}')
 
-    if random.choice([0,1,2]) == 0:
-        await client.change_presence(status=discord.Status.idle, activity=discord.Game(coolactivity())) #seta o 'jogando'
+    await client.change_presence(status=discord.Status.idle, activity=discord.Game(coolactivity())) #seta o 'jogando'
     
     
 
@@ -664,11 +597,7 @@ async def on_message(message):                          #aqui ficam todos os com
                     except:
                         print('Foi tentado enviar uma mensagem de aviso mute para {message.author.name} porém ele desabilitou tal opção.')
                     await member.add_roles(mutedrole)
-                    lista = []
-                    for role in member.roles:
-                        lista.append(role.name)
-                    mutadosroles.update({member.id: lista})
-                    savemutadosroles()
+                    lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
                     await message.channel.purge(limit=15, check=is_troller)
                     await reg_tp.send(content='❌ [{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(mensagem grande)_ no canal {.mention}\n\nMensagem enviada: {} \n\ntamanho: {}\\{} \n\n '.format(currenttime(), ademir, message.author, message.channel, message.content[:1750], len(message.content), mensagemflood))
                     await message.channel.send(f'https://tenor.com/zH0p.gif', delete_after=60)
@@ -680,28 +609,23 @@ async def on_message(message):                          #aqui ficam todos os com
                     await message.delete()
                     await message.channel.send(f'{message.author.mention}, não envie mensagens grandes!', delete_after=15)
                     await member.add_roles(cargocaveira)
-                    lista = []
+                    lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
                     for role in message.author.roles:
                         lista.append(role.name)
                     mutadosroles.update({message.author.id: lista})
-                    savemutadosroles()
+                    savelista(mutadosroles, 'mutadosroles')
 
 
-            for i in imageextensions:                       #apaga mensagens contendo imagens como attachments
+            for i in imageextensions:                               #apaga mensagens contendo imagens como attachments
                 if message.channel.name == 'shitpost':
                     return
                 if str(message.attachments).lower().find(i) != -1:  #procura se a mensagem tem imagem.
                     if member.top_role == cargocaveira:
-                        files = []                              #define a lista
+                        files = []                                  #define a lista
                         filename = message.attachments[0].filename #define o nome de arquivo
                         os.system('wget –-quiet {} -O {}'.format(message.attachments[0].url, filename)) #baixa a imagem, precisa ter o wget dentro do path sistema
-                        await member.add_roles(mutedrole)       #dá mute, e salva no registro
-                        lista = []
-                        for role in message.author.roles:
-                            lista.append(role.name)
-                        mutadosroles.update({message.author.id: lista})
-                        savemutadosroles()
-
+                        await member.add_roles(mutedrole)           #dá mute, e salva no registro
+                        lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
                         try:
                             await avisomuteDM(message)
                         except:
@@ -716,21 +640,14 @@ async def on_message(message):                          #aqui ficam todos os com
                         await reg_tp.send(content='❌ [{}] \n\nusuário {.mention} cometeu infração _envio de imagem não verificada_ no canal {.mention}.'.format(currenttime(), member, message.channel))
                         await message.channel.send(f'{message.author.mention}, não envie imagens!', delete_after=15)
                         await member.add_roles(cargocaveira)
-                        lista = []
-                        for role in message.author.roles:
-                            lista.append(role.name)
-                        mutadosroles.update({message.author.id: lista})
-                        savemutadosroles()
+                        lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
 
-            for i in imageextensions:                       #apaga mensagens contendo link de imagens
+            for i in imageextensions:                               #apaga mensagens contendo link de imagens
                 if messagecontentlower.find(i) != -1:
                     if member.top_role == cargocaveira:
                         await member.add_roles(mutedrole)
-                        lista = []
-                        for role in message.author.roles:
-                            lista.append(role.name)
-                        mutadosroles.update({message.author.id: lista})
-                        savemutadosroles()
+                        lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
+                        savelista(mutadosroles, 'mutadosroles')
                         try:
                             await avisomuteDM(message)
                         except:
@@ -744,11 +661,7 @@ async def on_message(message):                          #aqui ficam todos os com
                     if member.top_role != cargocaveira:
                         await reg_tp.send(content='❌ [{}] \n\nusuário {.mention} cometeu infração _mensagem longa_ no canal {.mention}.'.format(currenttime(), member, message.channel))
                     await member.add_roles(cargocaveira)
-                    lista = []
-                    for role in message.author.roles:
-                        lista.append(role.name)
-                    mutadosroles.update({message.author.id: lista})
-                    savemutadosroles()
+                    lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
                     await message.channel.send(f'https://tenor.com/zH0p.gif', delete_after=30)
 
         #remover cargo 2 pontos se o usuário tiver dentro do server por mais de 24h
@@ -761,11 +674,7 @@ async def on_message(message):                          #aqui ficam todos os com
         if messagecontentlower.find(i) != -1:
             if extractor.has_urls(message.content):
                 await member.add_roles(mutedrole)
-                lista = []
-                for role in message.author.roles:
-                    lista.append(role.name)
-                mutadosroles.update({message.author.id: lista})
-                savemutadosroles()
+                lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
                 log(f'Usuário {tempmember} foi mutado por envio link de redirecionador ({i}), \"{message.content}\"')
                 try:
                     await avisomuteDM(message)
@@ -782,11 +691,7 @@ async def on_message(message):                          #aqui ficam todos os com
             site = requests.get(link)
             if site.text.lower().find('block this site') != -1 or 'http://www.rtalabel.org/index.php?content=parents' in site.text:
                     await member.add_roles(mutedrole)
-                    lista = []
-                    for role in message.author.roles:
-                        lista.append(role.name)
-                    mutadosroles.update({message.author.id: lista})
-                    savemutadosroles()
+                    lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
                     await reg_tp.send(content='❌ [{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(link de site contendo string adulta)_ no canal {.mention}\n\nMensagem enviada:\n\n{}'.format(currenttime(), ademir, message.author, message.channel, message.content))
                     try:
                         await avisomuteDM(message)
@@ -799,11 +704,7 @@ async def on_message(message):                          #aqui ficam todos os com
                     for i in whitelist:
                         if i in link: return
                     await member.add_roles(mutedrole)
-                    lista = []
-                    for role in message.author.roles:
-                        lista.append(role.name)
-                    mutadosroles.update({message.author.id: lista})
-                    savemutadosroles()
+                    lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
                     await reg_tp.send(content='❌ [{}] \n {.mention}\n\n usuário {.mention} mutado por comportamento potencialmente indesejado _(link de site dentro do blacklist)_ no canal {.mention}\n\ntrigger: {} \n\nMensagem enviada:\n\n{}'.format(currenttime(), ademir, message.author, message.channel, i, message.content))
                     try:
                         await avisomuteDM(message)
@@ -959,13 +860,13 @@ async def on_message(message):                          #aqui ficam todos os com
                 membrosativostimes.pop(membrosativos.index(member.name))
                 membrosativostimes.insert(membrosativos.index(member.name), datetime.datetime.now())
 
-                saveativos();savetimes();savevalores()
+                savelista(membrosativos, 'ativos');savelista(membrosativostimes, 'ativos');savelista(membrosativosvalores, 'ativos')
 
-                print(f'[{currenttime()}] membro {member} nº {membrosativos.index(member.name)} total de mensagens: {tempvalue}')
+                print(f'[{currenttime()}]\tmembro {member} nº {membrosativos.index(member.name)} total de mensagens: {tempvalue}')
                 
         except ValueError:
             membrosativos.append(member.name)
-            saveativos()
+            savelista(membrosativos, 'ativos')
             print('adicionado {} na lista de ativos para computação de dados'.format(member))
 
 
@@ -1026,8 +927,8 @@ async def on_message(message):                          #aqui ficam todos os com
         await message.channel.send(f'{message.author.mention}, lista resetada com sucesso!');return
 
 
-    if messagecontentlower.startswith("a benção") and spammerdebomdialimiter(message.author) or messagecontentlower.startswith("bença") and spammerdebomdialimiter(message.author):
-        if message.channel.name != 'bate-papo': return
+    if messagecontentlower.startswith("a benção") or messagecontentlower.startswith("bença"):
+        if message.channel.name != 'bate-papo' or not spammerdebomdialimiter(message.author): return
         await message.channel.send(f'{message.author.mention} Deus te abençoe.')
 
     """ #isso aqui foi criado pra o bot enviar a mensagem no canal.
@@ -1059,15 +960,23 @@ async def on_message(message):                          #aqui ficam todos os com
 
 
     #bate papo mirror
-    
     if message.channel.name == 'bate-papo':
-        await mirrorchannel.send(content=f'[Mensagem de {message.author.mention}]\n{message.content}', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
-        
-        
+        global lastusersent
+
+        if lastusersent != message.author.id:
+            header = f'{message.author.mention}:'
+            lastusersent = message.author.id
+        else:
+            header=''
+            
+
         if message.attachments:
             files = discord.File(f"/home/natas/bot/attachments/{attachmentsApagados[message.id].nomearquivo}")
-            await mirrorchannel.send(file=files)
-
+            msg = await mirrorchannel.send(content=f'[Mensagem de {message.author.name}]', file=files, allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
+            bate_papo_ids.update({message.id:msg.id})
+        else:
+            msg = await mirrorchannel.send(content=f'{header}\n{message.content}', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
+            bate_papo_ids.update({message.id:msg.id})
 
 
 
@@ -1082,19 +991,19 @@ async def on_message(message):                          #aqui ficam todos os com
 
 
 
-@client.event                                           #quando o user entra, mostrar uma mensagem de boas vindas.
-async def on_member_join(member):
+@client.event                                           
+async def on_member_join(member):                                       #quando o user entra, mostrar uma mensagem de boas vindas.
     global reg_tp, mutadosroles
 
     if member.id in mutadosroles:
-        print(f'mutadosroles: {mutadosroles}')
+        #print(f'mutadosroles: {mutadosroles}')
             #for roles in mutadosroles[member.id]:
         i=1
         while i < len(mutadosroles[member.id]):
-            print(f'trying to add {str(mutadosroles[member.id][i])}')
+            #print(f'trying to add {str(mutadosroles[member.id][i])}')
             await member.add_roles(discordget(member.guild.roles, name=mutadosroles[member.id][i]))
             i+=1
-        await reg_tp.send(f'\n<:tpthink:522461647588294679> [{currenttime()}] usuário {member.mention} tinha {i-1} roles anteriores ao sair do servidor. Adicionadas de volta.\n\x0b')
+        await reg_tp.send(f'<:tpthink:522461647588294679>\t[{currenttime()}]\tusuário {member.mention} tinha {i-1} roles anteriores ao sair do servidor. Adicionadas de volta.')
 
     if member.bot: return
     if member.id == natasaltid: await member.add_roles(discordget(member.guild.roles, name='Bumper')) #pra facilitar minha vida
@@ -1106,9 +1015,9 @@ async def on_member_join(member):
     #reg_tp = member.guild.get_channel(registro)
     try:
         await member.send(embed=embed)                      #envia o embed
-        await reg_tp.send(content='☺️ [{}] Dado boas-vindas ao {.mention}'.format(currenttime(), member))
+        await reg_tp.send(content='☺️\t[{}] Dado boas-vindas ao {.mention}'.format(currenttime(), member))
     except:
-        await reg_tp.send(content='😦 [{}] Não foi possível dar boas-vindas ao {.mention}.'.format(currenttime(), member))
+        await reg_tp.send(content='😦\t[{}] Não foi possível dar boas-vindas ao {.mention}.'.format(currenttime(), member))
     #--------fim boas vindas
 
 
@@ -1120,11 +1029,7 @@ async def on_member_join(member):
     if tempodeexistencia < 1:
         global cargo2pontos
         await member.add_roles(cargo2pontos)
-        lista = []
-        for role in member.roles:
-            lista.append(role.name)
-        mutadosroles.update({member.id: lista})
-        savemutadosroles()
+        lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
         await reg_tp.send('❗ [{}] Usuário {.mention} com menos de 1 dia de conta no Discord entrou no servidor. watchdog adicionado.'.format(currenttime(), member))
 
 
@@ -1138,15 +1043,15 @@ async def on_member_join(member):
     #print('entradastempo:',entradasdeuserstempo, '\n\n', 'entradasmembro:',entradasmembros)
 
     try:
+        global lastuserjoin,lastlastuserjoin
+
+        print('NMN:', newmembernumber+1, 'User:', member)
 
         if entradasdeuserstempo[1]:
-            #print('entradasdeuserstempo is true')
-            global lastuserjoin
-            global lastlastuserjoin
-            print('NMN:', newmembernumber+1, 'User:', member)
-
+            
             lastuserjoin = entradasdeuserstempo[1]
             lastlastuserjoin = entradasdeuserstempo[0]
+
             #print('lastuserjoin:', lastuserjoin, 'datetime:', datetime.datetime.now())
             #print('entre users:', datetime.datetime.now() - lastuserjoin)
             if lastuserjoin - lastlastuserjoin <= datetime.timedelta(minutes=4.5):
@@ -1154,53 +1059,40 @@ async def on_member_join(member):
                 cargo2pontos = discordget(member.guild.roles, name="..")
                 await member.add_roles(cargo2pontos)
                 try:
-                    for role in member.roles:
-                        mutadosroles.update({member.id, []})
-                        mutadosroles[member.id].append(role.name)
-                    savemutadosroles()
+                    lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
                 except:
                     pass
                 try:
                     oldmember = entradasmembros[0]
                     await oldmember.add_roles(cargo2pontos)
                     
+                    lista = []; [lista.append(role.name) for role in oldmember.roles]; mutadosroles.update({oldmember.id: lista}); savelista(mutadosroles, 'mutadosroles')
 
+                    await reg_tp.send(content='❗\t[{}] Cargo watchdog adicionado ao {.mention} e {.mention}, entraram em menos de {} minutos'.format(currenttime(),oldmember, member, round(datetime.timedelta.total_seconds(lastuserjoin - lastlastuserjoin)/60, 2)))
                     
-                    lista = []
-                    for role in oldmember.roles:
-                        lista.append(role.name)
-                    print(lista)
-                    mutadosroles.update({oldmember.id: lista})
-                    savemutadosroles()
 
-                    await reg_tp.send(content='❗ [{}] Cargo watchdog adicionado ao {.mention} e {.mention}, entraram em menos de {} minutos'.format(currenttime(), member, oldmember, round(datetime.timedelta.total_seconds(lastuserjoin - lastlastuserjoin)/60, 2)))
-                    
+                    #controle de raid, adc cargo intolerância quando muita gente entra muito rápido.
                     global raidcontrol
 
                     if not raidcontrol:
                         raidcontrol = {}
                         raidcontrol.update({datetime.datetime.now():[oldmember, member]})
+                        print('atualizado lista')
                         #print(raidcontrol)
                     else:
                         time=next(iter(raidcontrol.keys()))
-                        if datetime.datetime.now() - time > datetime.timedelta(minutes=1.25):
+                        if datetime.datetime.now() - time > datetime.timedelta(minutes=1.5):
                             raidcontrol = False
                             return
 
-                        
-                        global cargocaveira
+                        global ademir, cargocaveira
                         for x in raidcontrol.values():
                             for raideiros in x+[member]:
                                 if '💀' not in str(raideiros.roles):
                                     #print(raideiros.roles)
                                     await raideiros.add_roles(cargocaveira)
-                                    lista = []
-                                    for role in oldmember.roles:
-                                        lista.append(role.name)
-                                    mutadosroles.update({oldmember.id: lista})
-                                    savemutadosroles()
-                                    await reg_tp.send(f'Adicionado cargocaveira (intolerância) ao user {member.mention} pois entraram muitos ao mesmo tempo.')
-                            
+                                    lista = []; [lista.append(role.name) for role in raideiros.roles]; mutadosroles.update({raideiros.id: lista}); savelista(mutadosroles, 'mutadosroles')
+                                    await reg_tp.send(f'❌\t**RAID ALERT**\t❌\t\t❌\t**RAID ALERT**\t❌\t\t❌\t**RAID ALERT**\t❌\t\t❌\t**RAID ALERT**\t❌\t\t\nIntolerância ao user {member.mention} pois entraram muitos ao mesmo tempo.\n\n{ademir.mention}')
                     #print(raidcontrol)
 
 
@@ -1211,7 +1103,7 @@ async def on_member_join(member):
     except Exception as error:
         global natasmember
         if newmembernumber != 0:
-            await natasmember.send(f"[{currenttime()}] {natasmember.mention}\nException at newmembernumber. \n`{traceback.format_exc()}`\nTime to reset.")
+            await natasmember.send(f"[{currenttime()}]\t{natasmember.mention}\nException at newmembernumber. \n`{traceback.format_exc()}`\nTime to reset.")
             
 
 
@@ -1219,17 +1111,23 @@ async def on_member_join(member):
 
 
 @client.event
-async def on_member_leave(member):
-    c = await client.fetch_channel(registro)
-    await c.send(f'[{currenttime()}] {member.mention} saiu do servidor.')
+async def on_member_remove(member):                                     #quando alguém sai do grupo
+    global reg_tp
+    
+    lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista})
+
+    if savelista(mutadosroles, 'mutadosroles'):
+        await reg_tp.send(f'<:tpthink:522461647588294679>\t[{currenttime()}]\t{member.mention} saiu do servidor e seus cargos foram salvos.')
+
+    await reg_tp.send(f'<:tptaotane:531859246292402186>\t[{currenttime()}]\t{member.mention} saiu do servidor.')
 
 
 
 
 
 
-@client.event                                           #add a role Clube do Livro/Grupode Estudos
-async def on_raw_reaction_add(event):
+@client.event                                          
+async def on_raw_reaction_add(event):                                   #add a role Clube do Livro/Grupode Estudos
     
 
     if event.member.bot:
@@ -1244,11 +1142,13 @@ async def on_raw_reaction_add(event):
     if event.message_id == clube_id:                    #verifica se a msg é a certa
         if str(event.emoji) == '\U0001F4DA':            #isso aqui é pra somente se o emoji for os livros
             await discord.Member.add_roles(member, livro) #add role
-            await reg_tp.send(content='✅ [{}] Adicionado ao {.mention} Clube do Livro'.format(currenttime(), member))
+            lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
+            await reg_tp.send(content='✅\t[{}] Adicionado e salvo cargo {.mention} ao {.mention}.'.format(currenttime(), livro, member))
     if event.message_id == grupo_id:
         if str(event.emoji) == '\U0001F4DA':
             await discord.Member.add_roles(member, estudos)
-            await reg_tp.send(content='✅ [{}] Adicionado ao {.mention} Grupo de Estudos'.format(currenttime(), member))
+            lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
+            await reg_tp.send(content='✅\t[{}] Adicionado e salvo cargo {.mention} ao {.mention}.'.format(currenttime(), estudos, member))
 
 
     #parte que faz o bgl de aprovação da sugestão de filme
@@ -1303,7 +1203,8 @@ async def on_raw_reaction_add(event):
 
                 await event.member.add_roles(discordget(guildroles, name=item))
                 reg = await client.fetch_channel(registro)
-                await reg.send(f'Adicionado role \"{item}\" ao usuário {member.mention}')
+                lista = []; [lista.append(role.name) for role in member.roles]; mutadosroles.update({member.id: lista}); savelista(mutadosroles, 'mutadosroles')
+                await reg.send(f'Adicionado e salvo role \"{item}\" ao usuário {member.mention}')
                 return
                 
 
@@ -1312,7 +1213,7 @@ async def on_raw_reaction_add(event):
 
 
 @client.event
-async def on_raw_message_delete(event):
+async def on_raw_message_delete(event):                                 #pra recuperar mensagens que foram apagadas
 
     try:
         if event.cached_message.author.bot: return
@@ -1321,17 +1222,38 @@ async def on_raw_message_delete(event):
 
     canal = await client.fetch_channel(event.channel_id)
     reg_tp = await client.fetch_channel(registro)
+    global mirrorchannel
+
+
+
+
+
 
     try:
-        if event.cached_message.content == '': await reg_tp.send(f'🛑 [{currenttime()}] uma mensagem de {event.cached_message.author.mention} foi apagada no canal {canal.mention}. Não havia texto, somente um attachment. Segue abaixo.', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
-        if event.cached_message.content != '': await reg_tp.send(content=f'🛑 [{currenttime()}] uma mensagem de {event.cached_message.author.mention} foi apagada no canal {canal.mention}. \n> {event.cached_message.content}', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
+        try:
+            if event.cached_message.content == '': await reg_tp.send(f'🛑\t[{currenttime()}]\tUma mensagem de {event.cached_message.author.mention} foi apagada no canal {canal.mention}\nLink em: {mirrorchannel.mention}: <https://discordapp.com/channels/439263663837151242/701184727796940910/{bate_papo_ids[event.cached_message.id]}>. Não havia texto, somente um attachment. Segue abaixo.', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
+        except:
+            pass
+        else:
+            if event.cached_message.content != '': await reg_tp.send(content=f'🛑\t[{currenttime()}]\tUma mensagem de {event.cached_message.author.mention} foi apagada no canal {canal.mention}\nLink em: {mirrorchannel.mention}: <https://discordapp.com/channels/439263663837151242/701184727796940910/{bate_papo_ids[event.cached_message.id]}>. \n```{event.cached_message.content}```', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
     except:
-        pass
+        try:
+            if event.cached_message.content == '': await reg_tp.send(f'🛑\t[{currenttime()}]\tUma mensagem de {event.cached_message.author.mention} foi apagada no canal {canal.mention}. Não havia texto, somente um attachment. Segue abaixo.', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
+            else:
+                await reg_tp.send(content=f'🛑\t[{currenttime()}]\tUma mensagem de {event.cached_message.author.mention} foi apagada no canal {canal.mention}. \n```{event.cached_message.content}```', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
+        except:
+            pass
 
     if event.message_id in attachmentsApagados:
         files = discord.File(f"/home/natas/bot/attachments/{attachmentsApagados[event.message_id].nomearquivo}")
         chn = await client.fetch_channel(registro)
         await chn.send(file=files)
+
+    """    global bate_papo_ids
+    try:
+        await reg_tp.send(f'found corresponding message in https://discordapp.com/channels/439263663837151242/701184727796940910/{bate_papo_ids[event.cached_message.id]}')
+    except:
+        print('error')"""
 
 
 
@@ -1339,12 +1261,12 @@ async def on_raw_message_delete(event):
 
 
 @client.event
-async def on_message_edit(b, a):
+async def on_message_edit(b, a):                                        #keep track of edited messages
 
     if a.content == b.content: return
 
     try:
-        await reg_tp.send(content=f'✏️ [{currenttime()}] uma mensagem de {a.author.mention} foi editada no canal {a.channel.mention}. link: http://discordapp.com/channels/{a.guild.id}/{a.channel.id}/{a.id} \nantes\n> {b.content}\ndepois\n> {a.content}', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
+        await reg_tp.send(content=f'✏️\t[{currenttime()}]\tuma mensagem de {a.author.mention} foi editada no canal {a.channel.mention}. link: http://discordapp.com/channels/{a.guild.id}/{a.channel.id}/{a.id}\nantes\n```\n{b.content}```depois\n```\n{a.content}```', allowed_mentions=discord.AllowedMentions(users=False, everyone=False, roles=False))
     except Exception as e:
         print(f"some error. on_message_edit {e}")
 
@@ -1353,7 +1275,7 @@ async def on_message_edit(b, a):
 
 
 @client.command()
-async def join(ctx):
+async def join(ctx):                                                    #comando de música que é mt complicado implementar
     if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
     with ctx.message.channel.typing():
         if ctx.channel.name != 'bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, use este comando no chat de bots!')
@@ -1365,7 +1287,7 @@ async def join(ctx):
 
 
 @client.command()
-async def leave(ctx):
+async def leave(ctx):                                                   #comando de música que é mt complicado implementar
     if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
     with ctx.message.channel.typing():
         global voicechannel
@@ -1374,7 +1296,7 @@ async def leave(ctx):
 
 
 @client.command()
-async def play(ctx, url: str):
+async def play(ctx, url: str):                                          #comando de música que é mt complicado implementar
     pass
     '''
     global voicechannel
@@ -1383,11 +1305,8 @@ async def play(ctx, url: str):
             os.remove("Song.mp3")
             print("removed file")
             return
-        
         await ctx.send(f"going do download the music file")
-
         voice = discordget(client.voice_clients, guild=ctx.guild)
-
         YTDL_OPTIONS = {
         'format': 'bestaudio/best',
         'postprocessors': [{
@@ -1396,32 +1315,24 @@ async def play(ctx, url: str):
             'preferredquality': '192'
         }]
         }
-
         with youtube_dl.YoutubeDL(YTDL_OPTIONS) as ydl:
             print("yeah we've got there")
             ydl.download([url])
-
-
         for file in os.listdir("./"):
             if file.endswith(".mp3"):
                 name = file
                 print(f'renamed file: {file}')
                 os.rename(file, "Song.mp3")
-
-        
         voicechannel.play(discord.FFmpegPCMAudio("Song.mp3"), after=None)
-
         voicechannel.source = discord.PCMVolumeTransformer(voice.source)
         voicechannel.source.volume = 0.07
-
-
         await ctx.send(f'playing {name}')
         print('playing')
         '''
 
 
 @client.command()
-async def digitando(ctx, second: int):
+async def digitando(ctx, second: int):                                  #pra zuar
     if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
     if not "Administrador" in str(ctx.message.author.roles): return
     with ctx.channel.typing():
@@ -1430,31 +1341,47 @@ async def digitando(ctx, second: int):
 
 
 @client.command()
-async def grupodeestudos(ctx):
+async def grupodeestudos(ctx):                                          #chamar galera do grupo de estudos
     
     global limiter1dia
-
-    author = ctx.message.author
-    channel = ctx.message.channel
+    author = ctx.message.author;message=ctx.message;channel = ctx.message.channel;channelsend = message.channel.send
+    
 
     if author.id in limiter1dia:
         await ctx.message.channel.send(f'{author.mention}, aguarde para usar este comando novamente!'); return
-
     limiter1dia.update({author.id: datetime.datetime.now()})
+
 
     if '..' in str(author.roles) or datetime.datetime.now() - author.joined_at < datetime.timedelta(days=7) or 'Grupo de Estudos' not in str(author.roles): 
         await ctx.channel.send(f'{ctx.message.author.mention}, você não tem permissão para usar este comando!')
         return
+
     else:
-        await ctx.message.channel.send(f'{discordget(ctx.message.guild.roles, name="Grupo de Estudos").mention}, {author.mention} mencionou vocês para estudar!'); 
+        msg = await channelsend(f'{author.mention}, você deseja mencionar o grupo de estudos?', delete_after=10)
+        await msg.add_reaction('\U0001F44D')
+        await msg.add_reaction('\U0001F44E')
+        
+        def check(reaction, user):
+            if str(reaction.emoji) != '👍':
+                return
+            return user == author and str(reaction.emoji) == '👍'
+
+        try:
+            reaction, user = await client.wait_for('reaction_add', timeout=10.0, check=check)
+        except asyncio.TimeoutError:
+            await channel.send('Você demorou muito para responder, operação cancelada!', delete_after=3)
+        else:
+            await ctx.message.channel.send(f'{discordget(ctx.message.guild.roles, name="Grupo de Estudos").mention}, {author.mention} mencionou vocês para estudar!'); 
 
 
 @client.command()
-async def dice(ctx):
+async def dice(ctx):                                                    #comando pra jogar dados no rpg
     
     message = ctx.message
     channelsend = message.channel.send
     author = message.author
+
+    if message.channel.name not in ['bots', 'rpg-chat']: await channelsend(f'{author.mention}, utilize o comando no bots ou rpg!', delete_after=10)
 
     #RPG stuff
     if True:
@@ -1465,7 +1392,6 @@ async def dice(ctx):
             if not 'd' in message.content[6:]: await channelsend(f'{author.mention}, por favor use no formato **X**d**Y**, onde X é o número de dados, e Y é o número de lados de cada dado.'); return
             if message.content[6:].count('d') > 1: await channelsend(f'{author.mention}, por favor use meu comando corretamente.'); return
             numeroDeDados, lados = message.content[6:].split('d')
-            #if any(i in invalidCharacters for i in numeroDeDados.lower()) or any(i in invalidCharacters for i in lados.lower()): await channelsend(f'{message.author.mention}, use números por favor.'); return
             try:
                 if int(numeroDeDados) < 1 or int(lados) < 1: await channelsend(f'{author.mention}, use números válidos por favor.'); return
             except:
@@ -1473,8 +1399,8 @@ async def dice(ctx):
             tip = '\nDica: só é suportado até 5 dados jogados.' if int(numeroDeDados) >= 6 else ''
             if int(numeroDeDados) >= 6 or len(lados) > 4: await channelsend(f'{author.mention}, use números menores. {tip}'); return
             
+            
             #after verified its valid input:
-
             try:
                 if datetime.datetime.now() - lasttimedonecommand < datetime.timedelta(seconds=20):
                     await channelsend(f"Aguarde antes de emitir um novo comando Dice.")
@@ -1504,19 +1430,19 @@ async def dice(ctx):
 
 
 @client.command()
-async def uptime(ctx):
-    if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
+async def uptime(ctx):                                                  #saber quanto tempo o bot tá rodando
+    #if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
     await ctx.message.channel.send(f'`Bot uptime is {datetime.datetime.now() - started}`')
 
 
 @client.command()
-async def ping(ctx):
-    if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
+async def ping(ctx):                                                    #ping simples
+    #if ctx.message.channel.name !='bots': await ctx.message.channel.send(f'{ctx.message.author.mention}, utilize o canal de bots por favor!', delete_after=10); return
     await ctx.message.channel.send(f'Ping: {round(client.latency*1000)}ms')
 
 
 @client.command(aliases=['ajuda'])
-async def help(ctx):
+async def help(ctx):                                                    #comando help
     global setorajuda
     if True:                                        #comando de ajuda #procura o canal com id regras, pra mencionar nas DM's depois
 
@@ -1532,25 +1458,25 @@ async def help(ctx):
 
 
 @client.command()
-async def mostrarboasvindas(ctx):
+async def mostrarboasvindas(ctx):                                       #comando pra exibir boas vindas. somente para demonstração
     embed = getboasvindasembed(ctx.message.author)
     await ctx.message.channel.send(embed=embed)
     
 
 @client.command()
-async def mensagemDM(ctx):
+async def mensagemDM(ctx):                                              #administradores podem usar o bot para enviar mensagens privadas para usuários
     if 'Administrador' not in str(ctx.message.author.roles): await ctx.message.channel.send(f'{ctx.message.author.mention}, este comando só pode ser usado por administradores!'); return
     if not ctx.message.mentions: await ctx.message.channel.send(f'{ctx.message.author.mention}, você precisa mencionar alguém para enviar a mensagem!'); return
     await ctx.message.mentions[0].send(ctx.message.content[34:])
 
 
 @client.command()
-async def github(ctx):
-    await ctx.message.channel.send(f"{ctx.message.author.mention}, aqui está o repositório:\n https://github.com/NatasFX/TheProjectBot ")
+async def github(ctx):                                                  #comando pra mandar de volta o link do github do bot
+    await ctx.message.channel.send(f"{ctx.message.author.mention}, aqui está o repositório:\n <https://github.com/NatasFX/TheProjectBot>")
 
 
 @client.command()
-async def sugerirfilme(ctx):
+async def sugerirfilme(ctx):                                            #comandos de filme
 
     message = ctx.message
     author = message.author
@@ -1579,10 +1505,10 @@ async def sugerirfilme(ctx):
                     listasugestãofilme.update({                             #atualiza a lista com id da mensagem de solicitação e o filme escolhido
                         msg.id:[message.content[14:],author.id]
                     })
-                    savelistasugestãofilme()                                #salva a lista no txt
+                    savelista(listasugestãofilme, 'listasugestãofilme')     #salva a lista no txt
                     await channelsend(f'{author.mention}, sua sugestão foi enviada, muito obrigado! {str(gettplove(message))}')
                     await channelsend(f'Você tem mais {3-len(eventofilmelista[message.author.id])} sugestões de filme')
-                    saveeventofilmelista()                                  #mostra quantas sugestões de filme ainda podem ser feitas
+                    savelista(eventofilmelista,'eventofilmelista')          #mostra quantas sugestões de filme ainda podem ser feitas
                     return                                                  #sempre bom ter
                 else:
                     await channelsend(f'{author.mention}, ops! aconteceu um erro.')
@@ -1597,7 +1523,7 @@ async def sugerirfilme(ctx):
 
 
 @client.command(aliases=['versugestões'])
-async def versugestão(ctx):
+async def versugestão(ctx):                                             #comandos de filme
 
     message = ctx.message
     author = message.author
@@ -1636,7 +1562,7 @@ async def versugestão(ctx):
 
 
 @client.command(aliases=['apagarsugestões'])
-async def apagarsugestão(ctx):
+async def apagarsugestão(ctx):                                          #comandos de filme
 
     message = ctx.message
     author = message.author
